@@ -3572,7 +3572,9 @@ window.openSupervisionReportModal = function() {
 window.closeSupervisionReportModal = function() { closeModalDirect('supervision-report-modal'); };
 
 window.openClientPortalModal = function() {
-    openModalDirect('client-portal-modal');
+    openModalDirect('client-portal-modal', function() {
+        if (window.LalaPortal) window.LalaPortal.fillEditor();
+    });
 };
 window.closeClientPortalModal = function() { closeModalDirect('client-portal-modal'); };
 
@@ -3745,6 +3747,21 @@ header .tabs a, .tabs[role="navigation"] a {
     </div>
 </div>
 
+<!-- DANIŞAN PORTALI (bağlantı modu): #portal=... ile açılınca yalnızca bu görünür -->
+<script>
+/* Bağlantı #portal= içeriyorsa danışan modu: koç paneli tamamen gizlenir */
+if (/^#portal=/.test(location.hash)) {
+    document.documentElement.classList.add('portal-mode');
+}
+</script>
+<style>
+html.portal-mode body > *:not(#lala-portal-view) { display: none !important; }
+html.portal-mode body { background: #020617 !important; }
+#lala-portal-view { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; }
+html:not(.portal-mode) #lala-portal-view { display: none; }
+</style>
+<div id="lala-portal-view" role="main" aria-label="Danışan Portalı"></div>
+
 <!-- iOS QuickLook / In-App Uyarı ve Rehber Bandı -->
 <div id="ios-quicklook-banner" style="display:none;background:linear-gradient(135deg, #1e3a8a, #0284c7);color:#fff;padding:10px 14px;font-family:-apple-system,BlinkMacSystemFont,sans-serif;font-size:12px;line-height:1.4;box-shadow:0 3px 12px rgba(0,0,0,0.25);position:sticky;top:0;z-index:9999;">
     <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;max-width:1100px;margin:0 auto;">
@@ -3864,6 +3881,14 @@ header .tabs a, .tabs[role="navigation"] a {
                     var el = document.getElementById(id);
                     if (el) { el.style.fontSize = '12px'; el.style.padding = '6px 10px'; g.appendChild(el); }
                 });
+                /* Kurulum turuna yeniden erişim */
+                var wiz = document.createElement('button');
+                wiz.type = 'button';
+                wiz.innerHTML = '🧭 Kurulum Turu';
+                wiz.title = 'İlk Kurulum Sihirbazını Yeniden Aç';
+                wiz.style.cssText = 'background:#713f12;color:#fff;border:0;padding:6px 10px;border-radius:5px;font-size:12px;font-weight:700;cursor:pointer;';
+                wiz.addEventListener('click', function (e) { e.stopPropagation(); if (window.LalaWizard) window.LalaWizard.start(true); });
+                g.appendChild(wiz);
                 g.addEventListener('click', function (e) { if (e.target.closest('button')) hide(); });
                 document.addEventListener('click', function (e) {
                     if (!open) return;
@@ -44831,57 +44856,59 @@ document.addEventListener('click', e => {
       <button type="button" onclick="closeClientPortalModal();" style="border:none;background:transparent;font-size:20px;cursor:pointer;color:#94a3b8;line-height:1;">✕</button>
     </div>
 
-    <!-- Danışan Selamlama Kartı -->
+    <!-- KOÇ DÜZENLEME KARTI -->
+    <div style="background:#1e293b;border:1px solid #334155;border-radius:12px;padding:12px;margin-bottom:14px;">
+      <b style="font-size:12px;color:#fbbf24;display:block;margin-bottom:8px;">⚙️ Portal İçeriği (koç düzenler, danışan bağlantısına işlenir):</b>
+      <div style="display:flex;flex-direction:column;gap:8px;font-size:11.5px;color:#cbd5e1;">
+        <label>Danışan adı
+          <input type="text" id="portal-edit-name" oninput="LalaPortal.syncFromEditor();" style="width:100%;box-sizing:border-box;margin-top:2px;background:#0f172a;color:#f8fafc;border:1px solid #334155;border-radius:6px;padding:6px 8px;font-size:12px;">
+        </label>
+        <label>Haftalık egzersizler (her satır bir ödev)
+          <textarea id="portal-edit-tasks" rows="3" oninput="LalaPortal.syncFromEditor();" style="width:100%;box-sizing:border-box;margin-top:2px;background:#0f172a;color:#f8fafc;border:1px solid #334155;border-radius:6px;padding:6px 8px;font-size:12px;resize:vertical;"></textarea>
+        </label>
+        <label>Sonraki seans
+          <input type="datetime-local" id="portal-edit-appt" onchange="LalaPortal.syncFromEditor();" style="width:100%;box-sizing:border-box;margin-top:2px;background:#0f172a;color:#f8fafc;border:1px solid #334155;border-radius:6px;padding:6px 8px;font-size:12px;">
+        </label>
+        <label>Zorlanma anı cep kartı
+          <textarea id="portal-edit-crisis" rows="3" oninput="LalaPortal.syncFromEditor();" style="width:100%;box-sizing:border-box;margin-top:2px;background:#0f172a;color:#f8fafc;border:1px solid #334155;border-radius:6px;padding:6px 8px;font-size:12px;resize:vertical;"></textarea>
+        </label>
+      </div>
+    </div>
+
+    <!-- Danışan Selamlama Kartı (önizleme) -->
     <div style="background:linear-gradient(135deg, #0f766e 0%, #115e59 100%);padding:14px;border-radius:12px;margin-bottom:14px;box-shadow:0 4px 12px rgba(15,118,110,0.3);">
       <div style="font-size:11px;color:#ccfbf1;font-weight:600;">HOŞ GELDİNİZ</div>
-      <h3 style="margin:2px 0 6px 0;font-size:16px;color:#ffffff;font-family:Georgia,serif;">Ahmet Yılmaz</h3>
+      <h3 id="portal-prev-name" style="margin:2px 0 6px 0;font-size:16px;color:#ffffff;font-family:Georgia,serif;">—</h3>
       <p style="margin:0;font-size:11.5px;color:#e0f2fe;line-height:1.4;">
         <i>"Düşünceler zihnin dalgalarıdır; sen okyanusun ta kendisisin."</i>
       </p>
     </div>
 
-    <!-- 1. Bu Haftanın 3 Ödevi (İnteraktif Kontrol Kutucuğu) -->
+    <!-- 1. Haftalık Egzersizler (önizleme) -->
     <div style="background:#1e293b;border:1px solid #334155;border-radius:12px;padding:12px;margin-bottom:12px;">
       <b style="font-size:12px;color:#38bdf8;display:block;margin-bottom:8px;">🎯 Haftalık Egzersizlerim:</b>
-      <div style="display:flex;flex-direction:column;gap:8px;font-size:12px;">
-        <label style="display:flex;align-items:center;gap:8px;background:#0f172a;padding:8px 10px;border-radius:6px;cursor:pointer;">
-          <input type="checkbox" onchange="toggleTaskDone(this);" style="transform:scale(1.1);">
-          <span>Sabah 5 dk 4-4 Kutu Nefesi</span>
-        </label>
-        <label style="display:flex;align-items:center;gap:8px;background:#0f172a;padding:8px 10px;border-radius:6px;cursor:pointer;">
-          <input type="checkbox" onchange="toggleTaskDone(this);" style="transform:scale(1.1);">
-          <span>Günde 1 kez Düşünce Kaydı (ODK)</span>
-        </label>
-        <label style="display:flex;align-items:center;gap:8px;background:#0f172a;padding:8px 10px;border-radius:6px;cursor:pointer;">
-          <input type="checkbox" onchange="toggleTaskDone(this);" style="transform:scale(1.1);">
-          <span>Gottman takdir cümlesi kurma</span>
-        </label>
-      </div>
+      <div id="portal-prev-tasks" style="display:flex;flex-direction:column;gap:8px;font-size:12px;"></div>
     </div>
 
-    <!-- 2. Acil Durum / Kriz Düğmesi -->
+    <!-- 2. Acil Durum / Kriz Kartı (önizleme) -->
     <div style="background:#450a0a;border:1px solid #991b1b;border-radius:12px;padding:12px;margin-bottom:12px;">
-      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;">
-        <b style="font-size:12px;color:#fca5a5;">🚨 Zorlanma Anında Ne Yapmalıyım?</b>
-      </div>
-      <p style="margin:0;font-size:11px;color:#fecaca;line-height:1.4;">
-        1. Yüzünüze hemen soğuk su çarpın (TIPP dalgıç refleksi).<br>
-        2. 5 nesneye bakın, 4 nesneye dokunun, derin nefes verin.<br>
-        3. Hatırlayın: Bu dalga 90 saniyede tepe yapar ve söner.
-      </p>
+      <b style="font-size:12px;color:#fca5a5;display:block;margin-bottom:6px;">🚨 Zorlanma Anında Ne Yapmalıyım?</b>
+      <p id="portal-prev-crisis" style="margin:0;font-size:11px;color:#fecaca;line-height:1.4;white-space:pre-line;"></p>
     </div>
 
-    <!-- 3. Sonraki Randevu -->
+    <!-- 3. Sonraki Randevu (önizleme) -->
     <div style="background:#1e293b;border:1px solid #334155;border-radius:12px;padding:10px 14px;margin-bottom:14px;display:flex;align-items:center;justify-content:space-between;font-size:11.5px;">
       <span style="color:#94a3b8;">🗓️ Sonraki Seans:</span>
-      <b style="color:#4ade80;">15 Kasım Pazartesi, 15:30</b>
+      <b id="portal-prev-appt" style="color:#4ade80;">—</b>
     </div>
 
-    <!-- Danışan Linkini Kopyala -->
+    <!-- Paylaşım -->
     <div style="text-align:center;">
-      <button type="button" onclick="copyClientPortalLink();" style="width:100%;background:#0284c7;color:#fff;border:none;padding:10px;border-radius:8px;font-size:12.5px;font-weight:700;cursor:pointer;">
+      <div id="portal-qr" style="display:flex;justify-content:center;margin-bottom:10px;background:#fff;border-radius:8px;padding:8px;width:max-content;margin-left:auto;margin-right:auto;"></div>
+      <button type="button" onclick="LalaPortal.copyLink();" style="width:100%;background:#0284c7;color:#fff;border:none;padding:10px;border-radius:8px;font-size:12.5px;font-weight:700;cursor:pointer;">
         📲 Danışan Cep Linkini &amp; WhatsApp Mesajını Kopyala
       </button>
+      <div style="font-size:10px;color:#64748b;margin-top:6px;line-height:1.4;">Bağlantı tüm içeriği kendi içinde taşır; sunucuya veri gönderilmez. Danışan telefonunda açınca yalnızca portal görünür.</div>
     </div>
 
   </div>
@@ -55482,6 +55509,7 @@ window.addEventListener('DOMContentLoaded', () => {
     window.openClientPortalModal = function() {
         const modal = document.getElementById('client-portal-modal');
         if (modal) modal.style.display = 'flex';
+        if (window.LalaPortal) window.LalaPortal.fillEditor();
     };
 
     window.closeClientPortalModal = function() {
@@ -55489,6 +55517,170 @@ window.addEventListener('DOMContentLoaded', () => {
         if (modal) modal.style.display = 'none';
     };
 
+    // =========================================================
+    // DANIŞAN PORTALI — gerçek veri, paylaşılabilir bağlantı, danışan modu
+    // =========================================================
+    window.LalaPortal = (function () {
+        'use strict';
+        var DEFAULT_CRISIS = '1. Yüzünüze hemen soğuk su çarpın (TIPP dalgıç refleksi).\n2. 5 nesneye bakın, 4 nesneye dokunun, derin nefes verin.\n3. Hatırlayın: Bu dalga 90 saniyede tepe yapar ve söner.';
+        var DEFAULT_TASKS = ['Sabah 5 dk 4-4 Kutu Nefesi', 'Günde 1 kez Düşünce Kaydı (ODK)', 'Gottman takdir cümlesi kurma'];
+
+        function activeClient() {
+            var sel = document.getElementById('global-active-client-select');
+            return (sel && sel.value && sel.value !== '__NEW__') ? sel.value : '';
+        }
+        function key(name) { return 'lala_portal__' + name; }
+        function load(name) {
+            try { return JSON.parse(localStorage.getItem(key(name))) || {}; } catch (e) { return {}; }
+        }
+        function persist(name, data) { try { localStorage.setItem(key(name), JSON.stringify(data)); } catch (e) {} }
+
+        function b64urlEncode(str) {
+            return btoa(unescape(encodeURIComponent(str))).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+        }
+        function b64urlDecode(s) {
+            s = s.replace(/-/g, '+').replace(/_/g, '/');
+            while (s.length % 4) s += '=';
+            return decodeURIComponent(escape(atob(s)));
+        }
+        function payloadFrom(name, d) {
+            return { n: name, t: d.tasks && d.tasks.length ? d.tasks : DEFAULT_TASKS, a: d.appt || '', c: d.crisis || DEFAULT_CRISIS };
+        }
+        function buildLink(payload) {
+            return location.origin + location.pathname + '#portal=' + b64urlEncode(JSON.stringify(payload));
+        }
+        function fmtAppt(iso) {
+            if (!iso) return '—';
+            try {
+                var dt = new Date(iso);
+                return dt.toLocaleDateString('tr-TR', { day: 'numeric', month: 'long', weekday: 'long' }) + ', ' +
+                       dt.toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' });
+            } catch (e) { return iso; }
+        }
+        function esc(s) { return String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;'); }
+
+        /* --- koç tarafı: düzenleyici + önizleme --- */
+        function fillEditor() {
+            var name = activeClient();
+            var d = load(name);
+            document.getElementById('portal-edit-name').value = name;
+            document.getElementById('portal-edit-tasks').value = (d.tasks && d.tasks.length ? d.tasks : DEFAULT_TASKS).join('\n');
+            document.getElementById('portal-edit-appt').value = d.appt || '';
+            document.getElementById('portal-edit-crisis').value = d.crisis || DEFAULT_CRISIS;
+            renderPreview();
+        }
+        function editorData() {
+            return {
+                tasks: document.getElementById('portal-edit-tasks').value.split('\n').map(function (s) { return s.trim(); }).filter(Boolean),
+                appt: document.getElementById('portal-edit-appt').value,
+                crisis: document.getElementById('portal-edit-crisis').value.trim()
+            };
+        }
+        function renderPreview() {
+            var name = document.getElementById('portal-edit-name').value.trim() || 'Danışanım';
+            var d = editorData();
+            document.getElementById('portal-prev-name').textContent = name;
+            document.getElementById('portal-prev-crisis').textContent = d.crisis || DEFAULT_CRISIS;
+            document.getElementById('portal-prev-appt').textContent = fmtAppt(d.appt);
+            var box = document.getElementById('portal-prev-tasks');
+            box.innerHTML = '';
+            (d.tasks.length ? d.tasks : DEFAULT_TASKS).forEach(function (t) {
+                var l = document.createElement('label');
+                l.style.cssText = 'display:flex;align-items:center;gap:8px;background:#0f172a;padding:8px 10px;border-radius:6px;cursor:default;';
+                l.innerHTML = '<input type="checkbox" disabled style="transform:scale(1.1);"><span>' + esc(t) + '</span>';
+                box.appendChild(l);
+            });
+            var qr = document.getElementById('portal-qr');
+            qr.innerHTML = '';
+            if (window.QRCode) {
+                try { new QRCode(qr, { text: buildLink(payloadFrom(name, d)), width: 132, height: 132, correctLevel: QRCode.CorrectLevel.M }); } catch (e) {}
+            }
+        }
+        function syncFromEditor() {
+            var name = document.getElementById('portal-edit-name').value.trim();
+            if (name) persist(name, editorData());
+            renderPreview();
+        }
+        function copyLink() {
+            var name = document.getElementById('portal-edit-name').value.trim() || 'Danışanım';
+            var d = editorData();
+            persist(name, d);
+            var payload = payloadFrom(name, d);
+            var link = buildLink(payload);
+            var taskLines = payload.t.map(function (t, i) { return '▫️ ' + (i + 1) + '. ' + t; }).join('\n');
+            var msg = '🌿 *LALALIK DANIŞAN PORTALI*\n\nMerhaba ' + name + ', bu haftaki egzersizleriniz ve cep kartınız hazır:\n' + taskLines +
+                '\n\n🗓️ *Gelecek Seans:* ' + fmtAppt(payload.a) +
+                '\n\n📱 Kişisel portalınız (işaretleyip takip edebilirsiniz):\n' + link + '\n\nİyi haftalar dileriz.';
+            function done() { alert('Danışan WhatsApp mesajı ve portal bağlantısı panoya kopyalandı!'); }
+            if (navigator.clipboard && navigator.clipboard.writeText) { navigator.clipboard.writeText(msg).then(done, function () { prompt('Kopyalayın:', msg); }); }
+            else { prompt('Kopyalayın:', msg); }
+        }
+
+        /* --- danışan tarafı: #portal= bağlantısıyla açılan görünüm --- */
+        function renderClientView() {
+            var host = document.getElementById('lala-portal-view');
+            if (!host) return;
+            var payload = null;
+            try { payload = JSON.parse(b64urlDecode(location.hash.slice(8))); } catch (e) {}
+            if (!payload || !payload.n) {
+                host.innerHTML = '<div style="min-height:100vh;display:flex;align-items:center;justify-content:center;color:#94a3b8;font-size:14px;padding:24px;text-align:center;">Bağlantı çözümlenemedi. Koçunuzdan yeni bağlantı isteyin.</div>';
+                return;
+            }
+            var stateKey = 'lala_portal_state_' + b64urlEncode(payload.n + '|' + (payload.t || []).join('|'));
+            var state = [];
+            try { state = JSON.parse(localStorage.getItem(stateKey)) || []; } catch (e) {}
+            var tasksHtml = (payload.t || []).map(function (t, i) {
+                var checked = state[i] ? ' checked' : '';
+                var style = state[i] ? 'text-decoration:line-through;opacity:.6;' : '';
+                return '<label style="display:flex;align-items:center;gap:8px;background:#0f172a;padding:10px 12px;border-radius:8px;cursor:pointer;' + style + '">' +
+                    '<input type="checkbox" data-i="' + i + '"' + checked + ' style="transform:scale(1.2);"><span>' + esc(t) + '</span></label>';
+            }).join('');
+            host.innerHTML =
+                '<div style="max-width:440px;margin:0 auto;padding:20px 16px 40px;color:#f8fafc;">' +
+                '<div style="text-align:center;margin-bottom:14px;"><span style="font-size:26px;">🌿</span><div style="font-size:12px;color:#38bdf8;font-weight:700;">Lalalık Danışan Portalı</div></div>' +
+                '<div style="background:linear-gradient(135deg,#0f766e,#115e59);padding:16px;border-radius:14px;margin-bottom:14px;">' +
+                '<div style="font-size:11px;color:#ccfbf1;font-weight:600;">HOŞ GELDİNİZ</div>' +
+                '<h3 style="margin:2px 0 6px;font-size:18px;color:#fff;font-family:Georgia,serif;">' + esc(payload.n) + '</h3>' +
+                '<p style="margin:0;font-size:11.5px;color:#e0f2fe;"><i>"Düşünceler zihnin dalgalarıdır; sen okyanusun ta kendisisin."</i></p></div>' +
+                '<div style="background:#1e293b;border:1px solid #334155;border-radius:12px;padding:12px;margin-bottom:12px;">' +
+                '<b style="font-size:12.5px;color:#38bdf8;display:block;margin-bottom:8px;">🎯 Haftalık Egzersizlerim:</b>' +
+                '<div id="lala-portal-tasks" style="display:flex;flex-direction:column;gap:8px;font-size:12.5px;">' + tasksHtml + '</div></div>' +
+                '<div style="background:#450a0a;border:1px solid #991b1b;border-radius:12px;padding:12px;margin-bottom:12px;">' +
+                '<b style="font-size:12.5px;color:#fca5a5;display:block;margin-bottom:6px;">🚨 Zorlanma Anında Ne Yapmalıyım?</b>' +
+                '<p style="margin:0;font-size:11.5px;color:#fecaca;line-height:1.5;white-space:pre-line;">' + esc(payload.c || DEFAULT_CRISIS) + '</p></div>' +
+                '<div style="background:#1e293b;border:1px solid #334155;border-radius:12px;padding:12px 14px;margin-bottom:14px;display:flex;justify-content:space-between;font-size:12px;">' +
+                '<span style="color:#94a3b8;">🗓️ Sonraki Seans:</span><b style="color:#4ade80;">' + esc(fmtAppt(payload.a)) + '</b></div>' +
+                '<button type="button" id="lala-portal-summary" style="width:100%;background:#0f766e;color:#fff;border:0;padding:11px;border-radius:10px;font-size:13px;font-weight:800;cursor:pointer;">✅ Haftalık Özeti Koçuma Gönder</button>' +
+                '<div style="font-size:10px;color:#475569;text-align:center;margin-top:8px;">İşaretlemeleriniz yalnızca bu cihazda saklanır.</div></div>';
+
+            var tasksBox = document.getElementById('lala-portal-tasks');
+            tasksBox.addEventListener('change', function (e) {
+                var cb = e.target.closest('input[type=checkbox]'); if (!cb) return;
+                var i = +cb.dataset.i;
+                state[i] = cb.checked;
+                try { localStorage.setItem(stateKey, JSON.stringify(state)); } catch (err) {}
+                var lbl = cb.closest('label');
+                lbl.style.textDecoration = cb.checked ? 'line-through' : 'none';
+                lbl.style.opacity = cb.checked ? '.6' : '1';
+            });
+            document.getElementById('lala-portal-summary').addEventListener('click', function () {
+                var lines = (payload.t || []).map(function (t, i) { return (state[i] ? '✅' : '⬜') + ' ' + t; }).join('\n');
+                var doneCount = (payload.t || []).filter(function (t, i) { return state[i]; }).length;
+                var msg = '🌿 Haftalık Portal Özeti — ' + payload.n + '\nTamamlanan: ' + doneCount + '/' + (payload.t || []).length + '\n' + lines;
+                if (navigator.clipboard && navigator.clipboard.writeText) {
+                    navigator.clipboard.writeText(msg).then(function () { alert('Özet kopyalandı; WhatsApp\'a yapıştırıp koçunuza gönderebilirsiniz.'); });
+                } else { prompt('Kopyalayın:', msg); }
+            });
+        }
+
+        document.addEventListener('DOMContentLoaded', function () {
+            if (document.documentElement.classList.contains('portal-mode')) renderClientView();
+        });
+
+        return { fillEditor: fillEditor, syncFromEditor: syncFromEditor, copyLink: copyLink };
+    })();
+
+    /* Geriye dönük uyumluluk: eski önizleme kutuları */
     window.toggleTaskDone = function(checkbox) {
         if (checkbox.checked) {
             checkbox.parentElement.style.textDecoration = 'line-through';
@@ -55498,13 +55690,7 @@ window.addEventListener('DOMContentLoaded', () => {
             checkbox.parentElement.style.opacity = '1';
         }
     };
-
-    window.copyClientPortalLink = function() {
-        const msg = `🌿 *LALALIK DANIŞAN GÜNLÜK TAKİP & EGZERSİZ REHBERİ*\n\nMerhaba Ahmet Bey, bu haftaki seans kazanımlarınız ve egzersizleriniz:\n▫️ 1. Sabah 5 dk 4-4-4-4 Kutu Nefesi\n▫️ 2. Günde 1 kez Düşünce Kaydı (ODK Formu)\n▫️ 3. Yakın çevrenize içten takdir ifadesi sunma\n\n🚨 *Zorlanma Anı Cep Kartı:*\nYoğun kaygıda yüzünüze soğuk su çarpın (TIPP dalgıç refleksi) ve unutmayın: Yoğun duygular dalga gibidir, 90 saniyede söner.\n\n🗓️ *Gelecek Seans:* 15 Kasım Pazartesi, Saat 15:30\nİyi haftalar dileriz.`;
-        navigator.clipboard.writeText(msg).then(() => {
-            alert('Danışan WhatsApp mesajı panoya kopyalandı!');
-        });
-    };
+    window.copyClientPortalLink = function() { if (window.LalaPortal) window.LalaPortal.copyLink(); };
 
 
     // =========================================================
@@ -76884,6 +77070,188 @@ window.LalaSecureUI = (function () {
 
     return { open: open, close: close, setup: setup, change: change, disable: disable,
              openBackup: openBackup, snooze: snooze, refreshBackupUI: refreshBackupUI };
+})();
+</script>
+
+<!-- HOŞ GELDİN SİHİRBAZI + ANTETLİ YAZDIRMA -->
+<style>
+#lala-wizard-modal input, #lala-wizard-modal textarea { width:100%; box-sizing:border-box; padding:8px 10px; border:1.5px solid #cbd5e1; border-radius:8px; font-size:13.5px; }
+#lala-wizard-modal input:focus, #lala-wizard-modal textarea:focus { border-color:#14532d; outline:none; }
+.lala-wiz-dot { width:8px; height:8px; border-radius:50%; background:#cbd5e1; display:inline-block; }
+.lala-wiz-dot.on { background:#14532d; }
+@media screen { .lala-letterhead { display:none; } }
+@media print {
+    .lala-letterhead { display:flex !important; justify-content:space-between; align-items:flex-end; border-bottom:2px solid #14532d; padding-bottom:2.5mm; margin-bottom:4mm; font-size:8.5pt; color:#334155; }
+    .lala-letterhead b { font-size:11pt; color:#14532d; display:block; }
+    .lala-letterhead .lh-right { text-align:right; font-size:8pt; color:#64748b; }
+}
+</style>
+<div id="lala-wizard-modal" role="dialog" aria-modal="true" aria-label="Kurulum Sihirbazı" style="display:none;position:fixed;inset:0;z-index:2147483002;background:rgba(2,6,23,.6);align-items:center;justify-content:center;">
+    <div style="background:#fff;border-radius:16px;padding:24px 22px;width:min(400px,92vw);box-shadow:0 24px 60px rgba(0,0,0,.4);">
+        <div style="text-align:center;margin-bottom:14px;">
+            <span style="font-size:30px;">🌿</span>
+            <div style="font-size:17px;font-weight:800;color:#14532d;font-family:Georgia,serif;">Lalalık Paneli'ne Hoş Geldiniz</div>
+            <div id="lala-wiz-dots" style="display:flex;gap:6px;justify-content:center;margin-top:8px;"><span class="lala-wiz-dot on"></span><span class="lala-wiz-dot"></span><span class="lala-wiz-dot"></span></div>
+        </div>
+
+        <div class="lala-wiz-step" data-step="1">
+            <div style="font-size:13.5px;font-weight:800;color:#1e293b;margin-bottom:4px;">1. Koç Profiliniz</div>
+            <p style="font-size:11.5px;color:#64748b;margin:0 0 10px;">Antetli belgelerde ve raporlarda kullanılır.</p>
+            <div style="display:flex;flex-direction:column;gap:8px;">
+                <input id="wiz-prof-name" type="text" placeholder="Ad Soyad · Unvan (örn: Ayşe Yılmaz · PCC, Yaşam Koçu)">
+                <input id="wiz-prof-org" type="text" placeholder="Kurum / Marka (örn: Lalalık Koçluk)">
+                <input id="wiz-prof-contact" type="text" placeholder="İletişim (e-posta veya telefon)">
+            </div>
+        </div>
+
+        <div class="lala-wiz-step" data-step="2" style="display:none;">
+            <div style="font-size:13.5px;font-weight:800;color:#1e293b;margin-bottom:4px;">2. İlk Danışanınız</div>
+            <p style="font-size:11.5px;color:#64748b;margin:0 0 10px;">Tüm formlar ve takip ekranları seçili danışan adına çalışır. Rumuz da kullanabilirsiniz.</p>
+            <input id="wiz-client-name" type="text" placeholder="Danışan adı veya rumuzu">
+        </div>
+
+        <div class="lala-wiz-step" data-step="3" style="display:none;">
+            <div style="font-size:13.5px;font-weight:800;color:#1e293b;margin-bottom:4px;">3. İlk Seans</div>
+            <p style="font-size:11.5px;color:#64748b;margin:0 0 10px;">Portal bağlantısında ve hatırlatıcılarda görünür. Boş bırakabilirsiniz.</p>
+            <div style="display:flex;flex-direction:column;gap:8px;">
+                <input id="wiz-session-dt" type="datetime-local">
+                <textarea id="wiz-session-note" rows="2" placeholder="Kısa not (isteğe bağlı)"></textarea>
+            </div>
+        </div>
+
+        <div style="display:flex;gap:8px;margin-top:18px;">
+            <button type="button" id="lala-wiz-skip" style="flex:0 0 auto;background:#f1f5f9;border:0;border-radius:8px;padding:9px 12px;font-size:12px;font-weight:700;color:#64748b;cursor:pointer;">Atla</button>
+            <button type="button" id="lala-wiz-back" style="flex:0 0 auto;background:#f1f5f9;border:0;border-radius:8px;padding:9px 12px;font-size:12px;font-weight:700;color:#334155;cursor:pointer;display:none;">← Geri</button>
+            <button type="button" id="lala-wiz-next" style="flex:1;background:#14532d;color:#fff;border:0;border-radius:8px;padding:9px;font-size:13px;font-weight:800;cursor:pointer;">Devam →</button>
+        </div>
+    </div>
+</div>
+<script>
+/* --- Kurulum sihirbazı + antetli yazdırma --- */
+window.LalaWizard = (function () {
+    'use strict';
+    var step = 1;
+    function $(id) { return document.getElementById(id); }
+    function esc(s) { return String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;'); }
+    function modal() { return $('lala-wizard-modal'); }
+
+    function showStep(n) {
+        step = n;
+        document.querySelectorAll('.lala-wiz-step').forEach(function (el) {
+            el.style.display = +el.dataset.step === n ? '' : 'none';
+        });
+        document.querySelectorAll('.lala-wiz-dot').forEach(function (d, i) { d.classList.toggle('on', i < n); });
+        $('lala-wiz-back').style.display = n > 1 ? '' : 'none';
+        $('lala-wiz-next').textContent = n === 3 ? 'Bitir ✓' : 'Devam →';
+    }
+    function start(manual) {
+        /* profil alanlarını mevcut değerlerle doldur */
+        try {
+            var prof = JSON.parse(localStorage.getItem('lalalik_mentor_profile')) || {};
+            if (prof.name) $('wiz-prof-name').value = prof.name;
+            if (prof.org) $('wiz-prof-org').value = prof.org;
+            if (prof.contact) $('wiz-prof-contact').value = prof.contact;
+        } catch (e) {}
+        showStep(1);
+        modal().style.display = 'flex';
+    }
+    function finish() {
+        /* 1: profil */
+        var prof = {
+            name: $('wiz-prof-name').value.trim(),
+            org: $('wiz-prof-org').value.trim(),
+            contact: $('wiz-prof-contact').value.trim()
+        };
+        if (prof.name) { try { localStorage.setItem('lalalik_mentor_profile', JSON.stringify(prof)); } catch (e) {} }
+
+        /* 2: danışan */
+        var cn = $('wiz-client-name').value.trim();
+        if (cn) {
+            var sel = $('global-active-client-select');
+            if (sel) {
+                var exists = [...sel.options].some(function (o) { return o.value === cn; });
+                if (!exists) {
+                    var opt = document.createElement('option');
+                    opt.value = cn; opt.textContent = cn; opt.style.color = '#0f172a';
+                    sel.insertBefore(opt, sel.lastElementChild);
+                }
+                sel.value = cn;
+                if (typeof window.switchGlobalActiveClient === 'function') window.switchGlobalActiveClient(cn);
+            }
+            try { localStorage.setItem('lalalik_active_client', cn); } catch (e) {}
+        }
+
+        /* 3: ilk seans → portal randevusu */
+        var dt = $('wiz-session-dt').value;
+        if (dt && cn) {
+            try {
+                var key = 'lala_portal__' + cn;
+                var d = JSON.parse(localStorage.getItem(key)) || {};
+                d.appt = dt;
+                var note = $('wiz-session-note').value.trim();
+                if (note) d.firstNote = note;
+                localStorage.setItem(key, JSON.stringify(d));
+            } catch (e) {}
+        }
+
+        try { localStorage.setItem('lala_onboarded', '1'); } catch (e) {}
+        modal().style.display = 'none';
+    }
+    document.addEventListener('DOMContentLoaded', function () {
+        $('lala-wiz-next').addEventListener('click', function () {
+            if (step === 1 && !$('wiz-prof-name').value.trim()) { $('wiz-prof-name').focus(); return; }
+            if (step < 3) showStep(step + 1); else finish();
+        });
+        $('lala-wiz-back').addEventListener('click', function () { if (step > 1) showStep(step - 1); });
+        $('lala-wiz-skip').addEventListener('click', function () {
+            try { localStorage.setItem('lala_onboarded', '1'); } catch (e) {}
+            modal().style.display = 'none';
+        });
+        /* İlk açılışta bir kez göster */
+        var firstRun = !localStorage.getItem('lala_onboarded');
+        var portalMode = document.documentElement.classList.contains('portal-mode');
+        if (firstRun && !portalMode && !window.__lalaLocked) {
+            setTimeout(function () { start(false); }, 900);
+        }
+    });
+    return { start: start };
+})();
+
+/* --- Antetli yazdırma: yazdırılan ilk sayfaya koç anteti eklenir --- */
+(function () {
+    'use strict';
+    function esc(s) { return String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;'); }
+    function insertLetterhead() {
+        var prof = null;
+        try { prof = JSON.parse(localStorage.getItem('lalalik_mentor_profile')); } catch (e) {}
+        if (!prof || !prof.name) return;
+        if (document.querySelector('.lala-letterhead')) return;
+        var target = document.querySelector('body.single .sheet.print-this')
+                  || document.querySelector('.view.active .sheet')
+                  || document.querySelector('.sheet');
+        if (!target) return;
+        var sel = document.getElementById('global-active-client-select');
+        var client = (sel && sel.value && sel.value !== '__NEW__') ? sel.value : '';
+        var lh = document.createElement('div');
+        lh.className = 'lala-letterhead';
+        lh.innerHTML =
+            '<div><b>' + esc(prof.name) + '</b><span>' + esc(prof.org || '') + (prof.contact ? ' · ' + esc(prof.contact) : '') + '</span></div>' +
+            '<div class="lh-right"><span>' + new Date().toLocaleDateString('tr-TR', { day: 'numeric', month: 'long', year: 'numeric' }) + '</span>' +
+            (client ? '<br><span>Danışan: ' + esc(client) + '</span>' : '') + '</div>';
+        target.insertBefore(lh, target.firstChild);
+    }
+    /* Ctrl+P / menüden yazdırma */
+    window.addEventListener('beforeprint', insertLetterhead);
+    /* Paneldeki yazdırma butonları (window.print çağıranlar) — beforeprint'in tetiklenmediği yollar için */
+    document.addEventListener('click', function (e) {
+        var b = e.target.closest('button, a');
+        if (!b) return;
+        var oc = (b.getAttribute('onclick') || '') + ' ' + b.className + ' ' + (b.dataset.print || '');
+        if (/print|yazdır/i.test(oc)) insertLetterhead();
+    }, true);
+    window.addEventListener('afterprint', function () {
+        document.querySelectorAll('.lala-letterhead').forEach(function (n) { n.remove(); });
+    });
 })();
 </script>
 
