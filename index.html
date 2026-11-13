@@ -35276,6 +35276,16 @@ ightarrow$ 🟣 Bilinmeyen)</span>
       </table>
     </div>
 
+    <div style="margin-top:14px;background:#f0f9ff;border:1px solid #bae6fd;border-radius:8px;padding:12px;">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;gap:8px;flex-wrap:wrap;">
+        <b style="color:#0369a1;font-size:12.5px;">📥 Portal Geri Bildirim Geçmişi <span id="portal-history-client" style="color:#64748b;font-weight:600;"></span></b>
+        <button type="button" onclick="renderPortalHistory();" style="background:#fff;border:1px solid #7dd3fc;color:#0369a1;padding:3px 10px;border-radius:5px;font-size:11px;font-weight:600;cursor:pointer;">🔄 Yenile</button>
+      </div>
+      <div id="portal-history-list" style="display:flex;flex-direction:column;gap:8px;font-size:11.5px;">
+        <div style="color:#94a3b8;font-size:11px;">Danışan portalından gelen özetler burada zaman çizelgesi olarak listelenir.</div>
+      </div>
+    </div>
+
     <div style="margin-top:14px;display:flex;justify-content:space-between;align-items:center;">
       <button type="button" id="btn-export-crm-json" style="background:#0f766e;color:#fff;border:0;padding:6px 14px;border-radius:6px;font-size:12px;font-weight:600;cursor:pointer;">📲 Tüm Kayıtları Yedekle (JSON)</button>
       <button type="button" onclick="window.print()" style="background:#fff;border:1px solid #cbd5e1;padding:6px 14px;border-radius:6px;font-size:12px;cursor:pointer;">🖨️ Seans Karnesini Yazdır</button>
@@ -55847,6 +55857,7 @@ window.addEventListener('DOMContentLoaded', () => {
                     esc(done + '/' + total) + ' egzersiz tamam' + (kissaTitle ? ' · 📖 ' + esc(kissaTitle) : '') +
                     (openTasks.length ? '<br><span style="color:#fbbf24;">Açık kalan: ' + esc(openTasks.join('; ')) + '</span>' : '') + qaHtml;
                 ta.value = '';
+                if (window.renderPortalHistory) window.renderPortalHistory();
                 if (window.showToast) showToast('Özet ' + name + ' dosyasına işlendi!', 'success');
             } catch (e) {
                 fail('İşleme sırasında hata: ' + e.message);
@@ -59048,6 +59059,69 @@ window.addEventListener('DOMContentLoaded', () => {
         if (km) km.style.display = "none";
         if (typeof openClientPortalModal === "function") openClientPortalModal();
     };
+
+    // =========================================================================
+    // PORTAL GERİ BİLDİRİM GEÇMİŞİ (CRM içinde zaman çizelgesi)
+    // =========================================================================
+    window.renderPortalHistory = function() {
+        var listEl = document.getElementById("portal-history-list");
+        var labelEl = document.getElementById("portal-history-client");
+        if (!listEl) return;
+        function esc(s) {
+            return String(s == null ? "" : s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+        }
+        var client = "";
+        var sel = document.getElementById("global-active-client-select");
+        if (sel && sel.value && sel.value !== "__NEW__") client = sel.value;
+        if (labelEl) labelEl.textContent = client ? "— " + client : "";
+        var items = [];
+        try {
+            items = JSON.parse(localStorage.getItem("lalalik_portal_feedback__" + client) || "[]");
+            if (!Array.isArray(items)) items = [];
+        } catch (e) { items = []; }
+        if (!client || !items.length) {
+            listEl.innerHTML = '<div style="color:#94a3b8;font-size:11px;">' +
+                (client ? esc(client) + " için henüz portal geri bildirimi yok." : "Henüz portal geri bildirimi yok.") +
+                ' Danışan özetini Portal penceresindeki "📥 Özet Al" kutusuyla işleyebilirsiniz.</div>';
+            return;
+        }
+        listEl.innerHTML = items.map(function (it, idx) {
+            var dt = "";
+            try { dt = new Date(it.date).toLocaleString("tr-TR", { day: "numeric", month: "long", hour: "2-digit", minute: "2-digit" }); } catch (e) { dt = it.date || ""; }
+            var qaHtml = (it.qa && it.qa.length) ? '<div style="margin-top:6px;display:flex;flex-direction:column;gap:4px;">' + it.qa.map(function (x) {
+                return '<div style="background:#fff;border:1px solid #e0f2fe;border-radius:6px;padding:6px 8px;"><b style="color:#0369a1;">' + esc(x.n) + ") " + esc(x.q) + '</b><br><span style="color:#166534;">→ ' + esc(x.a || "(yanıt yok)") + "</span></div>";
+            }).join("") + "</div>" : "";
+            var openHtml = (it.openTasks && it.openTasks.length) ? '<div style="margin-top:4px;font-size:10.5px;color:#b45309;">Açık kalan: ' + esc(it.openTasks.join("; ")) + "</div>" : "";
+            return '<div style="background:#ffffff;border:1px solid #bae6fd;border-radius:8px;padding:10px;">' +
+                '<div style="display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap;">' +
+                    '<b style="color:#0c4a6e;font-size:11.5px;">🌿 ' + esc(dt) + " · " + esc(String(it.done)) + "/" + esc(String(it.total)) + " egzersiz tamam" + (it.kissa ? " · 📖 " + esc(it.kissa) : "") + "</b>" +
+                    '<button type="button" onclick="deletePortalFeedback(' + idx + ');" style="background:#fee2e2;color:#991b1b;border:0;padding:2px 8px;border-radius:4px;cursor:pointer;font-size:10.5px;">Sil</button>' +
+                "</div>" + qaHtml + openHtml + "</div>";
+        }).join("");
+    };
+
+    window.deletePortalFeedback = function(idx) {
+        var sel = document.getElementById("global-active-client-select");
+        var client = (sel && sel.value && sel.value !== "__NEW__") ? sel.value : "";
+        if (!client) return;
+        var key = "lalalik_portal_feedback__" + client;
+        var items = [];
+        try { items = JSON.parse(localStorage.getItem(key) || "[]"); if (!Array.isArray(items)) items = []; } catch (e) { items = []; }
+        items.splice(idx, 1);
+        try { localStorage.setItem(key, JSON.stringify(items)); } catch (e) {}
+        renderPortalHistory();
+        if (window.showToast) showToast("Geri bildirim kaydı silindi.", "info");
+    };
+
+    // CRM penceresi her açıldığında geçmişi otomatik tazele
+    document.addEventListener("DOMContentLoaded", function () {
+        var cm = document.getElementById("crm-modal");
+        if (cm && window.MutationObserver) {
+            new MutationObserver(function () {
+                if (cm.style.display === "flex") renderPortalHistory();
+            }).observe(cm, { attributes: true, attributeFilter: ["style"] });
+        }
+    });
 
     // =========================================================================
     // 4. MUHASEBE-İ NEFS & ŞEFKATLİ AKŞAM AYNASI
