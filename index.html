@@ -59001,6 +59001,7 @@ window.addEventListener('DOMContentLoaded', () => {
             '<h4 style="margin:0;font-size:15px;color:#92400e;">📜 ' + item.title + '</h4>' +
             '<span style="font-size:11px;background:#fef3c7;color:#92400e;padding:2px 8px;border-radius:6px;font-weight:700;">Tema: ' + item.theme + '</span>' +
             '<button type="button" onclick="kissaAssistToPortal(\'' + key + '\');" style="background:#7c3aed;color:#fff;border:0;padding:3px 9px;border-radius:6px;font-size:10.5px;font-weight:700;cursor:pointer;margin-left:8px;">📲 Portala Ekle</button>' +
+            '<button type="button" onclick="kissaPrintCard(\'' + key + '\');" style="background:#f59e0b;color:#fff;border:0;padding:3px 9px;border-radius:6px;font-size:10.5px;font-weight:700;cursor:pointer;margin-left:6px;">🃏 Kart Yazdır</button>' +
         '</div>' +
         '<div style="background:#fffbeb;border:1px solid #fde68a;border-radius:6px;padding:8px 10px;margin-bottom:10px;">' +
             '<b style="font-size:11px;color:#854d0e;">Arketipsel Semboller:</b> <span style="font-size:11.5px;color:#713f12;">' + item.symbols + '</span>' +
@@ -59399,6 +59400,55 @@ window.addEventListener('DOMContentLoaded', () => {
         var km = document.getElementById("kissa-metafor-modal");
         if (km) km.style.display = "none";
         if (typeof openClientPortalModal === "function") openClientPortalModal();
+    };
+
+    // Seçili kıssayı antetli A6 danışan kartı olarak yazdırır (seansta elden vermek için)
+    window.kissaPrintCard = function(key) {
+        var k = KISSALAR[key];
+        if (!k) return;
+        function escP(s) {
+            return String(s == null ? "" : s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+        }
+        var prof = {};
+        try { prof = JSON.parse(localStorage.getItem("lalalik_mentor_profile") || "{}"); } catch (e) {}
+        var selP = document.getElementById("global-active-client-select");
+        var clientP = (selP && selP.value && selP.value !== "__NEW__") ? selP.value : "";
+        var dateStr = new Date().toLocaleDateString("tr-TR", { day: "numeric", month: "long", year: "numeric" });
+        var host = document.getElementById("lala-kissa-print-card");
+        if (!host) {
+            host = document.createElement("div");
+            host.id = "lala-kissa-print-card";
+            host.style.display = "none";
+            document.body.appendChild(host);
+        }
+        var coachLine = [prof.name, prof.contact].filter(Boolean).join(" · ");
+        var questions = [k.q1, k.q2, k.q3].map(function (q, i) {
+            return '<div style="margin-top:5mm;"><div style="font-size:10.5px;color:#1c1917;line-height:1.45;"><b>' + (i + 1) + ".</b> " + escP(q) + "</div>" +
+                '<div style="border-bottom:1px dotted #a8a29e;height:8mm;"></div>' +
+                '<div style="border-bottom:1px dotted #a8a29e;height:8mm;margin-top:2mm;"></div></div>';
+        }).join("");
+        host.innerHTML =
+            '<div style="width:105mm;min-height:146mm;padding:9mm;box-sizing:border-box;border:1.5px solid #d97706;border-radius:5px;background:#fffdf7;font-family:Georgia,serif;">' +
+                '<div style="display:flex;justify-content:space-between;align-items:flex-start;border-bottom:1.5px solid #d97706;padding-bottom:5px;margin-bottom:9px;">' +
+                    '<div><b style="font-size:12.5px;color:#92400e;">' + escP(prof.org || "Lalalık Paneli") + "</b>" +
+                    (coachLine ? '<br><span style="font-size:8.5px;color:#78716c;">' + escP(coachLine) + "</span>" : "") + "</div>" +
+                    '<div style="font-size:8.5px;color:#78716c;text-align:right;line-height:1.5;">' + escP(dateStr) + (clientP ? "<br>Danışan: " + escP(clientP) : "") + "</div>" +
+                "</div>" +
+                '<div style="text-align:center;margin-bottom:9px;">' +
+                    '<div style="font-size:20px;">📖</div>' +
+                    '<b style="font-size:14px;color:#78350f;">' + escP(k.title) + "</b>" +
+                    '<div style="font-size:9px;color:#b45309;margin-top:2px;">' + escP(k.theme) + "</div>" +
+                "</div>" +
+                '<div style="background:#fef3c7;border-left:3px solid #d97706;padding:7px 9px;border-radius:3px;font-size:10px;color:#44403c;line-height:1.55;font-style:italic;margin-bottom:10px;">' + escP(k.wisdom) + "</div>" +
+                '<b style="font-size:10px;color:#92400e;">Hafta boyunca üzerine düşüneceğiniz 3 soru:</b>' +
+                questions +
+                '<div style="margin-top:6mm;text-align:center;font-size:8px;color:#a8a29e;font-style:italic;">Kıssalar öğüt vermek için değil, kendi hikâyenize ayna tutmak için anlatılır. 🌿</div>' +
+            "</div>";
+        if (typeof printTargetElement === "function") {
+            printTargetElement("lala-kissa-print-card", "Kıssa Kartı — " + k.title);
+        } else {
+            window.print();
+        }
     };
 
     // =========================================================================
