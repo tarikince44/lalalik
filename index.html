@@ -4195,7 +4195,99 @@ html:not(.portal-mode) #lala-portal-view { display: none; }
     </section>
 
     <!-- YENİ İNTERAKTİF ARAÇLAR VE SİMÜLATÖRLER -->
-    <div class="cards" style="margin-top:16px;margin-bottom:20px;">
+    <style>
+    .pano-grp-bar { display:flex; flex-wrap:wrap; gap:6px; margin:16px 0 2px; align-items:center; }
+    .pano-grp-btn { border:1.5px solid #cbd5e1; background:#fff; color:#334155; border-radius:99px; padding:6px 13px; font:inherit; font-size:12.5px; font-weight:700; cursor:pointer; transition:all .15s; }
+    .pano-grp-btn:hover { border-color:#14532d; color:#14532d; }
+    .pano-grp-btn.on { background:#14532d; border-color:#14532d; color:#fff; }
+    .pano-grp-btn .cnt { font-size:10.5px; opacity:.75; font-weight:600; margin-left:4px; }
+    #pano-tools-cards .card.grp-hide { display:none !important; }
+    body.dark-mode .pano-grp-btn { background:#1e293b; border-color:#475569; color:#e2e8f0; }
+    body.dark-mode .pano-grp-btn:hover { border-color:#34d399; color:#6ee7b7; }
+    body.dark-mode .pano-grp-btn.on { background:#059669; border-color:#059669; color:#fff; }
+    </style>
+    <div class="pano-grp-bar" id="pano-grp-bar" role="tablist" aria-label="Araç grupları"></div>
+    <script>
+    /* Pano araçları sekmeli gruplama: kartlar içeriklerine göre gruplanır, seçim hatırlanır */
+    (function () {
+        var GROUPS = [
+            ['all', '🗂️ Tümü'],
+            ['seans', '🎭 Seans İçi'],
+            ['yonetim', '📋 Danışan Yönetimi'],
+            ['olcme', '📊 Ölçme & Formülasyon'],
+            ['kutuphane', '📚 Kütüphane & Sistem']
+        ];
+        var MAP = [
+            ['Metaforlar & Simülatör', 'seans'],
+            ['Sokratik Sorgulama', 'seans'],
+            ['Sandalye Diyaloğu', 'seans'],
+            ['TIPP', 'seans'],
+            ['Johari', 'seans'],
+            ['Gottman Yumuşak', 'seans'],
+            ['Çarpıtma', 'seans'],
+            ['360°', 'yonetim'],
+            ['Ödev Karnesi', 'yonetim'],
+            ['Sesli Dikte', 'yonetim'],
+            ['Mini CRM', 'yonetim'],
+            ['Cep Portalı', 'yonetim'],
+            ['Süpervizyon', 'yonetim'],
+            ['SRS', 'olcme'],
+            ['Ölçekleri Laboratuvarı', 'olcme'],
+            ['5P BDT', 'olcme'],
+            ['Genogram', 'olcme'],
+            ['İnanç Kütüphanesi', 'kutuphane'],
+            ['Makroları', 'kutuphane'],
+            ['Semptoma Göre', 'kutuphane'],
+            ['Yedekleme', 'kutuphane']
+        ];
+        function init() {
+            var box = document.getElementById('pano-tools-cards');
+            var bar = document.getElementById('pano-grp-bar');
+            if (!box || !bar || bar.dataset.ready) return;
+            bar.dataset.ready = '1';
+            var cards = Array.prototype.slice.call(box.querySelectorAll('.card'));
+            var counts = { all: cards.length };
+            cards.forEach(function (c) {
+                var t = c.textContent || '';
+                var g = '';
+                for (var i = 0; i < MAP.length; i++) {
+                    if (t.indexOf(MAP[i][0]) !== -1) { g = MAP[i][1]; break; }
+                }
+                if (g) { c.setAttribute('data-grp', g); counts[g] = (counts[g] || 0) + 1; }
+            });
+            var cur = 'all';
+            try { cur = localStorage.getItem('lala_pano_grp') || 'all'; } catch (e) {}
+            function apply() {
+                var ok = false;
+                Array.prototype.forEach.call(bar.children, function (b) {
+                    var on = b.dataset.g === cur; b.classList.toggle('on', on); if (on) ok = true;
+                });
+                if (!ok) cur = 'all';
+                cards.forEach(function (c) {
+                    var g = c.getAttribute('data-grp');
+                    c.classList.toggle('grp-hide', cur !== 'all' && !!g && g !== cur);
+                });
+            }
+            GROUPS.forEach(function (gd) {
+                if (gd[0] !== 'all' && !counts[gd[0]]) return;
+                var b = document.createElement('button');
+                b.type = 'button'; b.className = 'pano-grp-btn'; b.dataset.g = gd[0];
+                b.setAttribute('role', 'tab');
+                b.innerHTML = gd[1] + '<span class="cnt">' + (counts[gd[0]] || 0) + '</span>';
+                b.addEventListener('click', function () {
+                    cur = b.dataset.g;
+                    try { localStorage.setItem('lala_pano_grp', cur); } catch (e) {}
+                    apply();
+                });
+                bar.appendChild(b);
+            });
+            apply();
+        }
+        if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init);
+        else init();
+    })();
+    </script>
+    <div class="cards" id="pano-tools-cards" style="margin-top:16px;margin-bottom:20px;">
         <!-- 1. DANIŞAN 360° İLERLEME GRAFİKLERİ & TREND ANALİZİ -->
         <div class="card" style="--c:#0f766e;border-top:3px solid #0f766e;display:flex;flex-direction:column;justify-content:space-between;">
             <div>
