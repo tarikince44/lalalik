@@ -58065,6 +58065,17 @@ window.addEventListener('DOMContentLoaded', () => {
                 </div>
             </div>
 
+            <!-- Kıssa Eşleştirme Asistanı: serbest metinden otomatik öneri -->
+            <div style="background:#fffbeb;border:1.5px dashed #f59e0b;border-radius:8px;padding:12px;margin-bottom:14px;">
+                <b style="font-size:12.5px;color:#92400e;display:flex;align-items:center;gap:6px;margin-bottom:4px;">🧠 Kıssa Eşleştirme Asistanı</b>
+                <p style="font-size:11px;color:#78716c;margin:0 0 8px;line-height:1.4;">Danışanın durumunu 2-3 cümleyle yazın (örn: <i>"İş yerinde yakın arkadaşının ihanetine uğradı, kimseye güvenemiyor, çok öfkeli."</i>). Asistan 13 kıssayı tarar, en uygun 3 eşleşmeyi gerekçesiyle önerir. Yazdıklarınız cihazdan çıkmaz, kaydedilmez.</p>
+                <div style="display:flex;gap:8px;align-items:flex-start;">
+                    <textarea id="kissa-assist-input" rows="3" placeholder="Danışanın güncel durumu, ana duygusu ve kriz konusu..." style="flex:1;box-sizing:border-box;padding:8px;border:1px solid #e7c77b;border-radius:6px;font-size:12px;font-family:inherit;resize:vertical;"></textarea>
+                    <button type="button" onclick="runKissaAssistant();" style="background:#d97706;color:#fff;border:0;padding:8px 14px;border-radius:6px;font-size:12px;font-weight:700;cursor:pointer;white-space:nowrap;">🔍 Analiz Et</button>
+                </div>
+                <div id="kissa-assist-results" style="margin-top:10px;display:none;"></div>
+            </div>
+
             <!-- Kıssa Kartı & Terapötik Çözümleme -->
             <div id="kissa-content-card" style="background:#ffffff;border:1.5px solid #d97706;border-radius:8px;padding:16px;box-shadow:0 2px 8px rgba(217,119,6,0.08);">
                 <!-- Dinamik kıssa detayı JS ile doldurulur -->
@@ -58609,6 +58620,170 @@ window.addEventListener('DOMContentLoaded', () => {
             else alert("Kıssa çalışması kaydedildi!");
         } catch(e) {
             alert("Kayıt kaydedildi.");
+        }
+    };
+
+    // =========================================================================
+    // 3b. KISSA EŞLEŞTİRME ASİSTANI (serbest metin → kıssa önerisi)
+    // =========================================================================
+    // Motorun 6 kıssasına ek olarak kütüphanedeki diğer 7 kıssanın kart verisi:
+    var KISSALAR_EXTRA = {
+        "ney": {
+            title: "Ney: Ayrılığın Feryadı", theme: "Ayrılık, Özlem ve Anlam Arayışı",
+            symbols: "🎋 Kamışlık (Kök ve Aidiyet) · 🔥 İçinin Oyulması (Arınma) · 🎶 Feryat (Manevi Musiki)",
+            wisdom: "Kamışlıktan kesilmeseydi ney olamazdı; içi oyulup ateşle delinmeseydi o büyüleyici sesi veremezdi. Ayrılık acısı, kişiyi kendi iç musikisine kavuşturan bir arınmadır.",
+            q1: "Şu an hayatında sızlayan o 'kamışlıktan kopuş' (ayrılık, kayıp, aidiyetsizlik) sana aslında neye özlem duyduğunu söylüyor?",
+            q2: "İçinin oyulması gibi hissettiren bu boşluk, hangi yeni sesin ve anlamın çıkacağı bir kanala dönüşebilir?",
+            q3: "Feryadını şikâyet yerine musikiye dönüştürmek için bu acıyı hangi yaratıcı veya manevi ifadeye taşıyabilirsin?"
+        },
+        "fil": {
+            title: "Karanlıkta Fil: Herkes Kendi Eliyle Tanır", theme: "Kısmi Bilgi, Önyargı ve Perspektif Çatışması",
+            symbols: "🐘 Fil (Büyük Hakikat) · 🖐️ El (Sınırlı Algı) · 🕯️ Mum (Aydınlanma)",
+            wisdom: "Karanlıkta fili el yordamıyla tanımaya çalışanların her biri haklıydı ama hiçbiri tam değildi. Kimseye 'sen yanlışsın' demeden önce, herkesin hakikatin bir parçasına dokunduğunu hatırlamak gerekir.",
+            q1: "Şu an 'kesinlikle böyle' dediğin konuda, elinle tuttuğun hangi kısmi parçayı bütün hakikat sanıyor olabilirsin?",
+            q2: "Karşındaki kişi aynı olayın hangi parçasına dokunuyor olabilir; onun tarifini duymak resme ne ekler?",
+            q3: "Bu çatışmayı çözmek için mumu (daha geniş bilgiyi, üçüncü bir bakışı) nereden getirebilirsin?"
+        },
+        "papagan": {
+            title: "Bakkal ve Papağan: Sen de mi Badem Yağı Döktün?", theme: "Yansıtma, Hatalı Kıyas ve Kendini Görme",
+            symbols: "🦜 Papağan (Yansıtıcı) · 🫗 Badem Yağı (Kendi İzi) · 🪞 Kel Derviş (Ayna)",
+            wisdom: "Kendi yarasını başkasının hâlinde gören papağan 'sen de mi' diye sorar. Bizi başkalarında en çok rahatsız eden şey, çoğu zaman kendimizde göremediğimiz izdir.",
+            q1: "Son günlerde birinde seni en çok rahatsız eden özellik neydi; bunun sende izi var mı?",
+            q2: "'Herkes benim gibi yaşıyor' varsayımın hangi konuda seni yanıltıyor olabilir?",
+            q3: "Başkasını yargılamadan önce kendine sorabileceğin o ayna sorusu ne olurdu?"
+        },
+        "simurg": {
+            title: "Simurg: Otuz Kuşun Aynası", theme: "İçsel Liderlik, Arayış ve Kendini Bulma",
+            symbols: "🦅 Simurg (Aranan Usta) · 🏔️ 7 Vadi (Olgunlaşma Evreleri) · 🪞 Göl (Ayna)",
+            wisdom: "Binlerce kuş yola çıktı, bahanelerle çoğu döküldü. Yedi vadiyi aşan otuz kuş (si-murg), vardıkları yerde aradıkları padişahın kendileri olduğunu gördü. Aradığın lider, cevap ve güç yolculuğun sonunda kendi içindir.",
+            q1: "Kendi yolculuğunda seni yoldan döndürmeye en yakın 'bahane kuşu' hangisi; o sana ne fısıldıyor?",
+            q2: "Şu an hangi vadidesin ve bu vadi senden ne istiyor?",
+            q3: "Ulaşmak istediğin o Simurg'u (usta, kurtarıcı, mükemmel koç) dışarıda aramayı bırakırsan, onun hangi vasfı zaten sende var?"
+        },
+        "nasreddin": {
+            title: "Nasreddin Hoca: Göle Maya ve Lambanın Altı", theme: "İyimserlik, Cesaret ve Kolaycılık Tuzağı",
+            symbols: "🥛 Maya (Küçük Umut Tohumu) · 🌊 Göl (Büyük Hedef) · 💡 Sokak Lambası (Konfor Alanı)",
+            wisdom: "Göle maya çalarken 'ya tutarsa' diyen Hoca imkânsız görünen işe girişme cesaretini; yüzüğü kaybettiği karanlık evde değil lambanın altında araması ise kolay yerde değil doğru yerde arama dersini verir.",
+            q1: "Hayatında 'ya tutarsa' deyip küçük bir maya çalabileceğin ama 'olmaz' diye ertelediğin hangi göl var?",
+            q2: "Bir kaybını veya cevabını, kaybettiğin yerde değil de aydınlık ve kolay olduğu için 'lambanın altında' mı arıyorsun?",
+            q3: "Doğru ama karanlık bölgeye adım atmak için ihtiyacın olan küçük cesaret eylemi ne?"
+        },
+        "taptuk": {
+            title: "Yunus ve Taptuk: Eğri Odun Bu Kapıdan Girmez", theme: "Radikal Doğruluk, Emek ve Karakter",
+            symbols: "🪵 Düz Odun (Doğruluk) · 🚪 Dergâh Kapısı (Standart) · ⏳ 40 Yıl (Sabırlı Emek)",
+            wisdom: "Yunus Emre kırk yıl boyunca dergâha sadece dosdoğru odun taşıdı. 'Bu kapıdan odunun bile eğrisi girmez' sözü, karakterin küçük tavizlerle değil her günkü küçük doğruluklarla inşa edildiğini öğretir.",
+            q1: "Hayatında 'nasılsa kimse fark etmez' dediğin küçük bir 'eğri odun' var mı; bu senin iç standardını nasıl etkiliyor?",
+            q2: "Kırk yıllık odun taşıma sabrını bugün hangi tekil, sıradan ama sadık kalacağın eylemle yaşayabilirsin?",
+            q3: "'Bu kapıdan içeri neyin girmesine izin vermem?' sorusuna vereceğin pazarlıksız tek ilke cevabın ne olurdu?"
+        },
+        "kehf": {
+            title: "Ashab-ı Kehf: Mağaradan Uyanış", theme: "Stratejik Geri Çekilme, Korunma ve Değişime Uyanış",
+            symbols: "🕳️ Mağara (Güvenli İnziva) · 🐕 Kıtmir (Sadık Yoldaş) · 🌅 Uyanış (Yeni Dünya)",
+            wisdom: "İnançlarını korumak için zalim düzenden mağaraya çekilen gençler kaçışı değil stratejik korunmayı seçti; uyandıklarında dünya değişmişti. Bazen geri çekilmek yenilgi değil, değerleri geleceğe taşıma sanatıdır.",
+            q1: "Seni yıpratan hangi 'zalim düzenden' (ilişki, iş, ortam) bir süreliğine bilinçli ve onurlu şekilde geri çekilmen gerekiyor?",
+            q2: "Geri çekilme ile kaçış arasındaki fark senin durumunda ne; mağaran sana dinlenme mi, erteleme mi sunuyor?",
+            q3: "Bu inziva bittiğinde hangi yeni dünyaya uyanmak istiyorsun ve o güne hangi değerlerini sağ salim taşıyacaksın?"
+        }
+    };
+    for (var _kx in KISSALAR_EXTRA) { if (!KISSALAR[_kx]) KISSALAR[_kx] = KISSALAR_EXTRA[_kx]; }
+
+    // Anahtar kelime haritası (normalize edilmiş Türkçe kökler; ı→i, ş→s, ğ→g, ü→u, ö→o, ç→c)
+    var KISSA_KEYWORDS = {
+        "yusuf":      ["ihanet","kiskanc","kardes","kuyu","travma","iftira","hapis","zindan","affetme","haksiz","lider","ruya","satil","kovul","magdur","yuksel","arkadas"],
+        "yunus":      ["kacis","kacmak","kaciyor","sorumluluk","gorevden","karanlik","cokus","pisman","itiraf","sucluluk","yanliz","bogul","firtina","ertele","uzuntu","yeniden"],
+        "musa_hizir": ["belirsiz","kontrol","neden","anlamiyor","anlayam","kayip","zarar","isyan","kaza","imtihan","tahammul","sok","beklenmedik","planboz","hikmet"],
+        "ibrahim":    ["korku","kaygi","ates","baski","zulm","cesaret","tevekkul","teslim","risk","tehdit","panik","inanc","tek basina","karar","buyuk adim"],
+        "eyyub":      ["hastalik","kronik","aci","yas","saglik","dayan","sikinti","uzun yil","sifa","dert","bitkin","tuken","agri","ameliyat","evlat","mal kayb"],
+        "meryem":     ["yargi","elalem","dedikodu","toplum","utanc","susmak","unutul","dislan","ne derler","imaj","onay","begeni","elestiril","iffet","namus","mucize"],
+        "ney":        ["ozlem","ayrilik","gurbet","hasret","bosluk","aidiyet","kopus","kok","memleket","terk edil","uzak","vatan","nostalji","sevgili","yas tut"],
+        "fil":        ["perspektif","onyargi","gorus ayriligi","catisma","empati","hakikat","yanilg","tartisma","anlasmaz","iletisim","fikir ayriligi","esimle","kavga","bakim"],
+        "papagan":    ["yansit","kiyas","baskasi","ayna","farkinda degil","inkar","kusur","yargiliyor","herkes boyle","benzet","kendimde","sucluyor"],
+        "simurg":     ["lider","yolculuk","arayis","hedef","vazgec","bahane","yorgun","potansiyel","azim","fedakar","zirve","amac","vizyon","kendini bul","pes etm"],
+        "nasreddin":  ["iyimser","umut","mizah","kabul","aramak","kolaycilik","ya tutarsa","pozitif","gulmek","bulamiyor","nerede kaybettim","deneme cesareti"],
+        "taptuk":     ["dogruluk","durust","ahlak","butunluk","sabir","emek","sadakat","karakter","tutarl","ilke","riya","yalan","egri","vicdan","hak yeme"],
+        "kehf":       ["geri cekil","izolasyon","korun","uyku","degisim","adaptasyon","inziva","guven","bekle","dinlen","mola","uzaklas","tukenmislik","siginak","yeni donem"]
+    };
+
+    // Çalışma sayfası kimlikleri (sayfada doğrudan bölüme gitmek için)
+    var KISSA_SHEET_IDS = {
+        "yusuf": "k-yusuf", "yunus": "k-yunus", "musa_hizir": "k-musa-hizir",
+        "eyyub": "k-eyup", "ney": "k-ney", "fil": "k-fil", "papagan": "k-papagan",
+        "simurg": "k-simurg", "nasreddin": "k-nasreddin", "taptuk": "k-taptuk", "kehf": "k-kehf"
+    };
+
+    function normalizeKissaText(s) {
+        return (s || "").toLocaleLowerCase("tr")
+            .replace(/ı/g, "i").replace(/ş/g, "s").replace(/ğ/g, "g")
+            .replace(/ü/g, "u").replace(/ö/g, "o").replace(/ç/g, "c")
+            .replace(/â/g, "a").replace(/î/g, "i").replace(/û/g, "u")
+            .replace(/[^a-z0-9\s]/g, " ").replace(/\s+/g, " ").trim();
+    }
+
+    window.runKissaAssistant = function() {
+        var input = document.getElementById("kissa-assist-input");
+        var box = document.getElementById("kissa-assist-results");
+        if (!input || !box) return;
+        var text = normalizeKissaText(input.value);
+        if (text.length < 8) {
+            box.style.display = "block";
+            box.innerHTML = '<div style="font-size:11.5px;color:#b45309;background:#fef9c3;border:1px solid #fde047;border-radius:6px;padding:8px;">Lütfen durumu en az birkaç kelimeyle tarif edin (duygu + olay + kişi).</div>';
+            return;
+        }
+        var words = text.split(" ");
+        var scored = [];
+        for (var key in KISSA_KEYWORDS) {
+            var kws = KISSA_KEYWORDS[key];
+            var score = 0, hits = [];
+            for (var i = 0; i < kws.length; i++) {
+                var kw = kws[i];
+                var found = false;
+                for (var w = 0; w < words.length; w++) {
+                    if (words[w].indexOf(kw) !== -1) { found = true; break; }
+                }
+                if (found) { score += kw.length >= 6 ? 2 : 1; hits.push(kw); }
+            }
+            if (score > 0 && KISSALAR[key]) scored.push({ key: key, score: score, hits: hits });
+        }
+        scored.sort(function(a, b) { return b.score - a.score; });
+        box.style.display = "block";
+
+        if (!scored.length) {
+            box.innerHTML = '<div style="font-size:11.5px;color:#475569;background:#f1f5f9;border:1px solid #cbd5e1;border-radius:6px;padding:8px;">Belirgin bir eşleşme bulunamadı. Metni biraz daha detaylandırın (ana duygu, olay, ilişki) ya da yukarıdaki fişlerden elle seçin.</div>';
+            return;
+        }
+
+        var top = scored.slice(0, 3);
+        var maxScore = top[0].score;
+        var html = '<b style="font-size:11.5px;color:#92400e;display:block;margin-bottom:6px;">🎯 En Uygun ' + top.length + ' Kıssa Eşleşmesi:</b>';
+        for (var t = 0; t < top.length; t++) {
+            var item = top[t];
+            var k = KISSALAR[item.key];
+            var pct = Math.round((item.score / maxScore) * 100);
+            var sheetId = KISSA_SHEET_IDS[item.key];
+            html += '<div style="background:#ffffff;border:1px solid #fde68a;border-radius:8px;padding:10px;margin-bottom:8px;">' +
+                '<div style="display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap;">' +
+                    '<b style="font-size:12.5px;color:#78350f;">' + (t + 1) + '. ' + k.title + '</b>' +
+                    '<span style="font-size:10.5px;color:#92400e;background:#fef3c7;padding:2px 8px;border-radius:10px;font-weight:700;">' + k.theme + '</span>' +
+                '</div>' +
+                '<div style="height:6px;background:#fef3c7;border-radius:3px;margin:6px 0;overflow:hidden;"><div style="height:100%;width:' + pct + '%;background:linear-gradient(90deg,#f59e0b,#d97706);border-radius:3px;"></div></div>' +
+                '<div style="font-size:10.5px;color:#78716c;margin-bottom:8px;">Eşleşen ipuçları: <i>' + item.hits.join(", ") + '</i></div>' +
+                '<div style="display:flex;gap:6px;flex-wrap:wrap;">' +
+                    '<button type="button" onclick="selectKissa(\'' + item.key + '\');document.getElementById(\'kissa-content-card\').scrollIntoView({behavior:\'smooth\',block:\'start\'});" style="background:#d97706;color:#fff;border:0;padding:5px 10px;border-radius:6px;font-size:11px;font-weight:700;cursor:pointer;">📜 Bu Kıssayı Aç</button>' +
+                    (sheetId ? '<button type="button" onclick="kissaAssistGotoSheet(\'' + sheetId + '\');" style="background:#f1f5f9;border:1px solid #cbd5e1;color:#334155;padding:5px 10px;border-radius:6px;font-size:11px;font-weight:600;cursor:pointer;">📄 Çalışma Sayfasına Git</button>' : '') +
+                '</div>' +
+            '</div>';
+        }
+        box.innerHTML = html;
+    };
+
+    window.kissaAssistGotoSheet = function(sheetId) {
+        var modal = document.getElementById("kissa-metafor-modal");
+        if (modal) modal.style.display = "none";
+        var el = document.getElementById(sheetId);
+        if (el) {
+            el.scrollIntoView({ behavior: "smooth", block: "start" });
+        } else if (window.location.hash !== "#katman/" + sheetId) {
+            window.location.hash = "#katman/" + sheetId;
         }
     };
 
