@@ -44921,6 +44921,15 @@ document.addEventListener('click', e => {
       <div style="font-size:10px;color:#64748b;margin-top:6px;line-height:1.4;">Bağlantı tüm içeriği kendi içinde taşır; sunucuya veri gönderilmez. Danışan telefonunda açınca yalnızca portal görünür.</div>
     </div>
 
+    <!-- Koç: danışan özet geri bildirimini içe aktar -->
+    <div style="background:#1e293b;border:1px solid #334155;border-radius:12px;padding:12px;margin-top:14px;">
+      <b style="font-size:12px;color:#4ade80;display:block;margin-bottom:6px;">📥 Danışan Özetini Dosyaya İşle:</b>
+      <p style="margin:0 0 8px;font-size:10.5px;color:#94a3b8;line-height:1.4;">Danışanın WhatsApp'tan gönderdiği "Haftalık Portal Özeti" mesajını buraya yapıştırın; egzersiz durumu ve kıssa yanıtları danışanın CRM dosyasına otomatik işlenir.</p>
+      <textarea id="portal-import-text" rows="4" placeholder="🌿 Haftalık Portal Özeti — ..." style="width:100%;box-sizing:border-box;background:#0f172a;color:#f8fafc;border:1px solid #334155;border-radius:6px;padding:6px 8px;font-size:11.5px;resize:vertical;font-family:inherit;"></textarea>
+      <button type="button" onclick="LalaPortal.importSummary();" style="width:100%;margin-top:8px;background:#16a34a;color:#fff;border:0;padding:8px;border-radius:8px;font-size:12px;font-weight:700;cursor:pointer;">📥 Özeti Danışan Dosyasına İşle</button>
+      <div id="portal-import-result" style="display:none;margin-top:8px;font-size:11px;line-height:1.5;color:#cbd5e1;"></div>
+    </div>
+
   </div>
 </div>
 
@@ -55746,6 +55755,104 @@ window.addEventListener('DOMContentLoaded', () => {
             if (document.documentElement.classList.contains('portal-mode')) renderClientView();
         });
 
+        /* --- koç tarafı: danışan özetini ayrıştırıp dosyaya işle --- */
+        function importSummary() {
+            var ta = document.getElementById('portal-import-text');
+            var res = document.getElementById('portal-import-result');
+            if (!ta || !res) return;
+            var text = (ta.value || '').trim();
+            function fail(msg) {
+                res.style.display = 'block';
+                res.innerHTML = '<span style="color:#fca5a5;">⚠️ ' + esc(msg) + '</span>';
+            }
+            if (text.length < 20) { fail('Özet metni çok kısa; danışanın gönderdiği mesajın tamamını yapıştırın.'); return; }
+
+            var m = text.match(/Portal Özeti\s*[—–-]\s*(.+)/);
+            var name = m ? m[1].trim() : '';
+            if (!name) name = activeClient() || document.getElementById('portal-edit-name').value.trim() || 'Danışan';
+
+            var doneMatch = text.match(/Tamamlanan:\s*(\d+)\s*\/\s*(\d+)/);
+            var done = doneMatch ? doneMatch[1] : '?';
+            var total = doneMatch ? doneMatch[2] : '?';
+
+            var lines = text.split('\n');
+            var doneTasks = [], openTasks = [];
+            lines.forEach(function (l) {
+                var t = l.trim();
+                if (t.indexOf('✅') === 0) doneTasks.push(t.replace(/^✅\s*/, '').trim());
+                else if (t.indexOf('⬜') === 0) openTasks.push(t.replace(/^⬜\s*/, '').trim());
+            });
+
+            var kissaMatch = text.match(/📖 Kıssa Çalışması:\s*(.+)/);
+            var kissaTitle = kissaMatch ? kissaMatch[1].trim() : '';
+
+            var qa = [];
+            for (var i = 0; i < lines.length; i++) {
+                var qm = lines[i].match(/^\s*(\d+)\)\s+(.+)/);
+                if (qm) {
+                    var ans = '';
+                    if (i + 1 < lines.length && /^\s*→/.test(lines[i + 1])) {
+                        ans = lines[i + 1].replace(/^\s*→\s*/, '').trim();
+                        var j = i + 2;
+                        while (j < lines.length && lines[j].trim() !== '' && !/^\s*\d+\)/.test(lines[j]) && lines[j].indexOf('📖') !== 0) {
+                            ans += ' ' + lines[j].trim(); j++;
+                        }
+                    }
+                    qa.push({ n: qm[1], q: qm[2].trim(), a: ans });
+                }
+            }
+
+            var notes = 'Portal özeti: ' + done + '/' + total + ' egzersiz tamamlandı.' +
+                (kissaTitle ? ' Kıssa: ' + kissaTitle + '.' : '') +
+                (qa.length ? ' Kıssa yanıtı: ' + qa.length + ' soru.' : '');
+            var homework = openTasks.length ? 'Açık kalan egzersiz: ' + openTasks.join('; ') : 'Tüm egzersizler tamamlandı.';
+            var rec = { name: name, session: 'Portal Özeti', module: '📥 Danışan Geri Bildirimi', notes: notes, homework: homework, date: new Date().toISOString() };
+
+            try {
+                var list = [];
+                try {
+                    list = JSON.parse(localStorage.getItem('lalalik_crm_records') || '[]');
+                    if (!Array.isArray(list)) list = [];
+                } catch (pe) { list = []; }
+                list.unshift(rec);
+                localStorage.setItem('lalalik_crm_records', JSON.stringify(list));
+
+                var fbKey = 'lalalik_portal_feedback__' + name;
+                var fbList = [];
+                try { fbList = JSON.parse(localStorage.getItem(fbKey) || '[]'); if (!Array.isArray(fbList)) fbList = []; } catch (fe) { fbList = []; }
+                fbList.unshift({ date: new Date().toISOString(), done: done, total: total, kissa: kissaTitle, qa: qa, doneTasks: doneTasks, openTasks: openTasks });
+                localStorage.setItem(fbKey, JSON.stringify(fbList));
+
+                var tbody = document.getElementById('crm-records-tbody');
+                if (tbody) {
+                    tbody.innerHTML = list.map(function (r, idx) {
+                        return '<tr style="border-bottom:1px solid #f1f5f9;">' +
+                            '<td style="padding:6px 10px;font-weight:700;color:#0f766e;">' + esc(r.name) + '</td>' +
+                            '<td style="padding:6px 10px;">' + esc(r.session) + '</td>' +
+                            '<td style="padding:6px 10px;"><span style="background:#e0f2fe;color:#0369a1;padding:2px 6px;border-radius:4px;font-size:10px;">' + esc(r.module) + '</span></td>' +
+                            '<td style="padding:6px 10px;font-size:11px;">' + esc(r.notes) + '</td>' +
+                            '<td style="padding:6px 10px;font-size:11px;color:#b45309;">' + esc(r.homework) + '</td>' +
+                            '<td style="padding:6px 10px;text-align:center;"><button type="button" onclick="deleteCrmRecord(' + idx + ')" style="background:#fee2e2;color:#991b1b;border:0;padding:2px 6px;border-radius:4px;cursor:pointer;font-size:10.5px;">Sil</button></td>' +
+                        '</tr>';
+                    }).join('');
+                }
+
+                var qaHtml = qa.length
+                    ? '<div style="margin-top:6px;">' + qa.map(function (x) {
+                        return '<div style="background:#0f172a;border-radius:6px;padding:6px 8px;margin-bottom:4px;"><b style="color:#fbbf24;">' + esc(x.n) + ') ' + esc(x.q) + '</b><br><span style="color:#a7f3d0;">→ ' + esc(x.a || '(yanıt yok)') + '</span></div>';
+                    }).join('') + '</div>'
+                    : '';
+                res.style.display = 'block';
+                res.innerHTML = '<span style="color:#4ade80;">✅ <b>' + esc(name) + '</b> dosyasına işlendi:</span> ' +
+                    esc(done + '/' + total) + ' egzersiz tamam' + (kissaTitle ? ' · 📖 ' + esc(kissaTitle) : '') +
+                    (openTasks.length ? '<br><span style="color:#fbbf24;">Açık kalan: ' + esc(openTasks.join('; ')) + '</span>' : '') + qaHtml;
+                ta.value = '';
+                if (window.showToast) showToast('Özet ' + name + ' dosyasına işlendi!', 'success');
+            } catch (e) {
+                fail('İşleme sırasında hata: ' + e.message);
+            }
+        }
+
         function setKissa(key) {
             var name = activeClient();
             var ed = document.getElementById('portal-edit-name');
@@ -55766,7 +55873,7 @@ window.addEventListener('DOMContentLoaded', () => {
             fillEditor();
         }
 
-        return { fillEditor: fillEditor, syncFromEditor: syncFromEditor, copyLink: copyLink, setKissa: setKissa, clearKissa: clearKissa };
+        return { fillEditor: fillEditor, syncFromEditor: syncFromEditor, copyLink: copyLink, setKissa: setKissa, clearKissa: clearKissa, importSummary: importSummary };
     })();
 
     /* Geriye dönük uyumluluk: eski önizleme kutuları */
