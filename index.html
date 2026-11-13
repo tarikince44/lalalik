@@ -5243,6 +5243,76 @@ html:not(.portal-mode) #lala-portal-view { display: none; }
         <div class="panel-box">
             <h2 style="color:#14532d;margin:0 0 8px;">Kayıtlı Görüşmeler</h2>
             <p class="muted" style="margin:0 0 10px;font-size:12px;">Bu tarayıcıda saklanan görüşme geçmişi. Bir kayda tıklayarak forma geri yükleyebilirsiniz.</p>
+            <div style="display:flex;align-items:center;gap:8px;margin:0 0 10px;font-size:12px;">
+                <label for="takip-menti-filter" style="color:#64748b;white-space:nowrap;">Danışan:</label>
+                <select id="takip-menti-filter" style="flex:1;max-width:240px;padding:4px 8px;border:1px solid #cbd5e1;border-radius:6px;font:inherit;font-size:12px;"><option value="">Tümü</option></select>
+                <span id="takip-filter-count" style="color:#64748b;font-size:11px;"></span>
+            </div>
+            <script>
+            /* Danışan bazlı geçmiş filtresi + otomatik görüşme numarası */
+            (function () {
+                window.__takipMentiFilter = '';
+                function norm(s) { return (s || '').trim().toLocaleLowerCase('tr-TR'); }
+                window.__takipFilterRefresh = function () {
+                    var sel = document.getElementById('takip-menti-filter');
+                    if (!sel || typeof getTakipData !== 'function') return;
+                    var list = getTakipData() || [];
+                    var names = [];
+                    list.forEach(function (c) {
+                        var n = (c.menti || 'Adsız Menti').trim();
+                        if (names.indexOf(n) === -1) names.push(n);
+                    });
+                    names.sort(function (a, b) { return a.localeCompare(b, 'tr'); });
+                    var cur = window.__takipMentiFilter;
+                    sel.innerHTML = '<option value="">Tümü (' + list.length + ')</option>' +
+                        names.map(function (n) {
+                            return '<option value="' + n.replace(/"/g, '&quot;') + '"' + (n === cur ? ' selected' : '') + '>' + n.replace(/&/g, '&amp;').replace(/</g, '&lt;') + '</option>';
+                        }).join('');
+                    if (cur && names.indexOf(cur) === -1) { window.__takipMentiFilter = ''; sel.value = ''; }
+                    var cnt = document.getElementById('takip-filter-count');
+                    if (cnt) {
+                        if (window.__takipMentiFilter) {
+                            var k = 0;
+                            list.forEach(function (c) { if ((c.menti || 'Adsız Menti').trim() === window.__takipMentiFilter) k++; });
+                            cnt.textContent = k + ' kayıt';
+                        } else cnt.textContent = '';
+                    }
+                };
+                /* t-no 12 aşamalı bir <select>: kayıt sayısına göre sıradaki görüşmeyi seçer; elle değiştirilirse saygı duyar */
+                function autoNo() {
+                    var m = document.getElementById('t-menti');
+                    var no = document.getElementById('t-no');
+                    if (!m || !no || typeof getTakipData !== 'function') return;
+                    var menti = m.value.trim();
+                    if (!menti || no.dataset.manual === '1') return;
+                    var n = 0;
+                    (getTakipData() || []).forEach(function (c) { if (norm(c.menti) === norm(menti)) n++; });
+                    if (n < no.options.length) {
+                        no.selectedIndex = n;
+                        no.dataset.auto = '1';
+                    }
+                }
+                function init() {
+                    var sel = document.getElementById('takip-menti-filter');
+                    if (sel) sel.addEventListener('change', function () {
+                        window.__takipMentiFilter = sel.value;
+                        if (typeof renderTakipList === 'function') renderTakipList();
+                    });
+                    var m = document.getElementById('t-menti');
+                    var noEl = document.getElementById('t-no');
+                    function resetManual() { if (noEl) noEl.dataset.manual = ''; autoNo(); }
+                    if (m) { m.addEventListener('input', resetManual); m.addEventListener('change', resetManual); }
+                    if (noEl) noEl.addEventListener('change', function () {
+                        noEl.dataset.auto = '';
+                        noEl.dataset.manual = '1';
+                    });
+                    var saveBtn = document.getElementById('t-btn-save');
+                    if (saveBtn) saveBtn.addEventListener('click', function () { setTimeout(autoNo, 80); });
+                }
+                if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init);
+                else init();
+            })();
+            </script>
             <div id="takip-listesi" style="display:flex;flex-direction:column;gap:8px;max-height:480px;overflow-y:auto;">
                 <!-- JavaScript dolduracak -->
             </div>
@@ -36342,7 +36412,9 @@ ightarrow$ 🟣 Bilinmeyen)</span>
 
 
     function renderTakipList() {
-        const list = getTakipData()
+        if (window.__takipFilterRefresh) window.__takipFilterRefresh()
+        const __allTakip = getTakipData()
+        const list = (window.__takipMentiFilter || '') ? __allTakip.filter(c => ((c.menti || 'Adsız Menti').trim() === window.__takipMentiFilter)) : __allTakip
         const el = document.getElementById('takip-listesi')
         const stat = document.getElementById('takip-istatistik')
         if (!el) return
@@ -36416,8 +36488,12 @@ ightarrow$ 🟣 Bilinmeyen)</span>
             btn.onclick = async () => {
                 const idx = Number(btn.dataset.idx)
                 if (await appConfirm('Bu görüşme kaydı silinsin mi?')) {
-                    list.splice(idx, 1)
-                    saveTakipData(list)
+                    const full = getTakipData()
+                    const victim = list[idx]
+                    let vi = full.indexOf(victim)
+                    if (vi === -1) vi = full.findIndex(c => c.kayitTarihi === victim.kayitTarihi && c.menti === victim.menti)
+                    if (vi !== -1) full.splice(vi, 1)
+                    saveTakipData(full)
                     renderTakipList(); renderTrendChart();
                 }
             }
