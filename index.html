@@ -44882,6 +44882,10 @@ document.addEventListener('click', e => {
         <label>Zorlanma anı cep kartı
           <textarea id="portal-edit-crisis" rows="3" oninput="LalaPortal.syncFromEditor();" style="width:100%;box-sizing:border-box;margin-top:2px;background:#0f172a;color:#f8fafc;border:1px solid #334155;border-radius:6px;padding:6px 8px;font-size:12px;resize:vertical;"></textarea>
         </label>
+        <label style="display:flex;align-items:center;gap:8px;background:#0f172a;border:1px solid #334155;border-radius:6px;padding:8px;cursor:pointer;">
+          <input type="checkbox" id="portal-edit-atolye" onchange="LalaPortal.syncFromEditor();" style="transform:scale(1.2);">
+          <span>✍️ "Kendi Kıssanı Yaz" atölyesi portalda açık olsun (5 sahnede anlatı terapisi)</span>
+        </label>
         <div id="portal-edit-kissa-row" style="display:none;background:#0f172a;border:1px dashed #b45309;border-radius:6px;padding:6px 8px;font-size:11.5px;color:#fde68a;">
           📖 Kıssa kartı: <b id="portal-edit-kissa-name"></b>
           <button type="button" onclick="LalaPortal.clearKissa();" style="float:right;background:transparent;border:0;color:#fca5a5;cursor:pointer;font-size:11px;font-weight:700;">Kaldır ✕</button>
@@ -55573,7 +55577,7 @@ window.addEventListener('DOMContentLoaded', () => {
             return decodeURIComponent(escape(atob(s)));
         }
         function payloadFrom(name, d) {
-            return { n: name, t: d.tasks && d.tasks.length ? d.tasks : DEFAULT_TASKS, a: d.appt || '', c: d.crisis || DEFAULT_CRISIS, k: d.kissa || '', r: d.route || '' };
+            return { n: name, t: d.tasks && d.tasks.length ? d.tasks : DEFAULT_TASKS, a: d.appt || '', c: d.crisis || DEFAULT_CRISIS, k: d.kissa || '', r: d.route || '', w: d.atolye ? 1 : '' };
         }
         function buildLink(payload) {
             return location.origin + location.pathname + '#portal=' + b64urlEncode(JSON.stringify(payload));
@@ -55596,6 +55600,8 @@ window.addEventListener('DOMContentLoaded', () => {
             document.getElementById('portal-edit-tasks').value = (d.tasks && d.tasks.length ? d.tasks : DEFAULT_TASKS).join('\n');
             document.getElementById('portal-edit-appt').value = d.appt || '';
             document.getElementById('portal-edit-crisis').value = d.crisis || DEFAULT_CRISIS;
+            var atc = document.getElementById('portal-edit-atolye');
+            if (atc) atc.checked = !!d.atolye;
             var krow = document.getElementById('portal-edit-kissa-row');
             var kname = document.getElementById('portal-edit-kissa-name');
             var kcur = d.kissa && window.LalaKissalar ? window.LalaKissalar[d.kissa] : null;
@@ -55616,7 +55622,8 @@ window.addEventListener('DOMContentLoaded', () => {
                 appt: document.getElementById('portal-edit-appt').value,
                 crisis: document.getElementById('portal-edit-crisis').value.trim(),
                 kissa: prev.kissa || '',
-                route: prev.route || ''
+                route: prev.route || '',
+                atolye: (document.getElementById('portal-edit-atolye') && document.getElementById('portal-edit-atolye').checked) ? 1 : 0
             };
         }
         function renderPreview() {
@@ -55715,6 +55722,34 @@ window.addEventListener('DOMContentLoaded', () => {
                     }
                 } catch (e) {}
             }
+            var taleKey = payload.w ? ('lala_portal_tale_' + b64urlEncode(payload.n)) : null;
+            var tale = { s1: '', s2: '', s3: '', s4: '', s5: '' };
+            if (taleKey) {
+                try {
+                    var tl = JSON.parse(localStorage.getItem(taleKey));
+                    if (tl && typeof tl === 'object') { ['s1','s2','s3','s4','s5'].forEach(function (k) { if (typeof tl[k] === 'string') tale[k] = tl[k]; }); }
+                } catch (e) {}
+            }
+            var TALE_SCENES = [
+                ['s1', '🦸 Kahraman', 'Hikâyenin kahramanı (siz) nasıl biri? En belirgin güçlü yönü ne?'],
+                ['s2', '🕳️ Kuyu', 'Kahramanın bir gün düştüğü kuyu (kriz, kayıp, zorlanma) neydi?'],
+                ['s3', '🧭 Rehber', 'Karanlıkta karşısına çıkan rehber, destek veya işaret kim/neydi?'],
+                ['s4', '⚡ Dönüm', 'Her şeyi değiştiren o küçük karar veya farkındalık anı neydi?'],
+                ['s5', '🌅 Dönüş', 'Kahraman kuyudan nasıl çıktı? Bugün kendi hikâyesini kime, nasıl anlatıyor?']
+            ];
+            var taleHtml = '';
+            if (payload.w) {
+                taleHtml = '<div style="background:#172554;border:1px solid #3b82f6;border-radius:12px;padding:12px;margin-bottom:12px;">' +
+                    '<b style="font-size:12.5px;color:#93c5fd;display:block;margin-bottom:4px;">✍️ Kendi Kıssanı Yaz</b>' +
+                    '<p style="margin:0 0 8px;font-size:10.5px;color:#bfdbfe;line-height:1.5;">Anlatı terapisi çalışması: kendi hikâyenizi 5 sahnede bir kıssa gibi yazın. Kahramandan bahsederken "ben" yerine "o" demeyi deneyin — mesafe, görüş netliği getirir.</p>' +
+                    TALE_SCENES.map(function (sc) {
+                        return '<div style="background:rgba(0,0,0,.25);border-radius:8px;padding:8px 10px;margin-bottom:6px;">' +
+                            '<b style="font-size:11px;color:#93c5fd;display:block;margin-bottom:4px;">' + sc[1] + '</b>' +
+                            '<div style="font-size:10px;color:#7aa2d8;margin-bottom:4px;">' + sc[2] + '</div>' +
+                            '<textarea data-ts="' + sc[0] + '" rows="2" placeholder="..." style="width:100%;box-sizing:border-box;background:rgba(0,0,0,.35);border:1px solid #3b82f6;border-radius:6px;padding:6px 8px;font-size:11.5px;color:#dbeafe;resize:vertical;font-family:inherit;">' + esc(tale[sc[0]]) + '</textarea></div>';
+                    }).join('') +
+                    '<div style="font-size:10px;color:#64748b;">Yazdıklarınız yalnızca bu cihazda saklanır; özet düğmesiyle koçunuza iletilir.</div></div>';
+            }
             var kissaHtml = '';
             if (kk) {
                 kissaHtml = '<div style="background:#3b2f0b;border:1px solid #b45309;border-radius:12px;padding:12px;margin-bottom:12px;">' +
@@ -55746,6 +55781,7 @@ window.addEventListener('DOMContentLoaded', () => {
                 '<b style="font-size:12.5px;color:#38bdf8;display:block;margin-bottom:8px;">🎯 Haftalık Egzersizlerim:</b>' +
                 '<div id="lala-portal-tasks" style="display:flex;flex-direction:column;gap:8px;font-size:12.5px;">' + tasksHtml + '</div></div>' +
                 kissaHtml +
+                taleHtml +
                 '<div style="background:#450a0a;border:1px solid #991b1b;border-radius:12px;padding:12px;margin-bottom:12px;">' +
                 '<b style="font-size:12.5px;color:#fca5a5;display:block;margin-bottom:6px;">🚨 Zorlanma Anında Ne Yapmalıyım?</b>' +
                 '<p style="margin:0;font-size:11.5px;color:#fecaca;line-height:1.5;white-space:pre-line;">' + esc(payload.c || DEFAULT_CRISIS) + '</p></div>' +
@@ -55784,6 +55820,14 @@ window.addEventListener('DOMContentLoaded', () => {
                     });
                 });
             }
+            if (taleKey) {
+                host.querySelectorAll('textarea[data-ts]').forEach(function (ta) {
+                    ta.addEventListener('input', function () {
+                        tale[ta.dataset.ts] = ta.value;
+                        try { localStorage.setItem(taleKey, JSON.stringify(tale)); } catch (err) {}
+                    });
+                });
+            }
             document.getElementById('lala-portal-summary').addEventListener('click', function () {
                 var lines = (payload.t || []).map(function (t, i) { return (state[i] ? '✅' : '⬜') + ' ' + t; }).join('\n');
                 var doneCount = (payload.t || []).filter(function (t, i) { return state[i]; }).length;
@@ -55797,6 +55841,14 @@ window.addEventListener('DOMContentLoaded', () => {
                     });
                     if (!anyAns) msg += ' (henüz yanıt yazılmadı)';
                     if (sud.pre !== null || sud.post !== null) msg += '\n\n📊 Sıkıntı puanı (0-10): önce ' + (sud.pre !== null ? sud.pre : '—') + ' → sonra ' + (sud.post !== null ? sud.post : '—');
+                }
+                if (payload.w) {
+                    var anyScene = false, sceneTxt = '';
+                    TALE_SCENES.forEach(function (sc) {
+                        var v = (tale[sc[0]] || '').trim();
+                        if (v) { anyScene = true; sceneTxt += '\n' + sc[1] + ': ' + v; }
+                    });
+                    if (anyScene) msg += '\n\n✍️ Kendi Kıssam:' + sceneTxt;
                 }
                 if (navigator.clipboard && navigator.clipboard.writeText) {
                     navigator.clipboard.writeText(msg).then(function () { alert('Özet kopyalandı; WhatsApp\'a yapıştırıp koçunuza gönderebilirsiniz.'); });
@@ -55846,6 +55898,26 @@ window.addEventListener('DOMContentLoaded', () => {
                 if (sudMatch[2] !== '—') sudPost = parseInt(sudMatch[2], 10);
             }
 
+            var tale = {};
+            var curScene = null;
+            var sceneDefs = [['🦸', 's1'], ['🕳️', 's2'], ['🧭', 's3'], ['⚡', 's4'], ['🌅', 's5']];
+            lines.forEach(function (l) {
+                var t = l.trim();
+                if (!t) { curScene = null; return; }
+                var matched = false;
+                for (var di = 0; di < sceneDefs.length; di++) {
+                    if (t.indexOf(sceneDefs[di][0]) === 0 && t.indexOf(':') !== -1) {
+                        tale[sceneDefs[di][1]] = t.slice(t.indexOf(':') + 1).trim();
+                        curScene = sceneDefs[di][1];
+                        matched = true;
+                        break;
+                    }
+                }
+                if (!matched && curScene && tale[curScene] !== undefined) {
+                    tale[curScene] += ' ' + t;
+                }
+            });
+
             var routeRes = null;
             if (window.kissaRouteAdvanceFromImport && kissaTitle) {
                 try { routeRes = window.kissaRouteAdvanceFromImport(name, kissaTitle); } catch (re) {}
@@ -55891,7 +55963,7 @@ window.addEventListener('DOMContentLoaded', () => {
                 var fbKey = 'lalalik_portal_feedback__' + name;
                 var fbList = [];
                 try { fbList = JSON.parse(localStorage.getItem(fbKey) || '[]'); if (!Array.isArray(fbList)) fbList = []; } catch (fe) { fbList = []; }
-                fbList.unshift({ date: new Date().toISOString(), done: done, total: total, kissa: kissaTitle, qa: qa, doneTasks: doneTasks, openTasks: openTasks, sudPre: sudPre, sudPost: sudPost });
+                fbList.unshift({ date: new Date().toISOString(), done: done, total: total, kissa: kissaTitle, qa: qa, doneTasks: doneTasks, openTasks: openTasks, sudPre: sudPre, sudPost: sudPost, tale: Object.keys(tale).length ? tale : null });
                 localStorage.setItem(fbKey, JSON.stringify(fbList));
 
                 var tbody = document.getElementById('crm-records-tbody');
@@ -55918,6 +55990,14 @@ window.addEventListener('DOMContentLoaded', () => {
                 sudHtml = '<div style="margin-top:6px;color:#93c5fd;">📊 Sıkıntı puanı: ' + (sudPre !== null ? sudPre : '—') + ' → ' + (sudPost !== null ? sudPost : '—') + deltaTxt + '</div>';
             }
 
+            var taleHtml = '';
+            if (Object.keys(tale).length) {
+                var sceneNames = { s1: '🦸 Kahraman', s2: '🕳️ Kuyu', s3: '🧭 Rehber', s4: '⚡ Dönüm', s5: '🌅 Dönüş' };
+                taleHtml = '<div style="margin-top:6px;"><b style="color:#93c5fd;">✍️ Danışanın Kıssası:</b>' + ['s1','s2','s3','s4','s5'].filter(function (k) { return tale[k]; }).map(function (k) {
+                    return '<div style="background:#0f172a;border-radius:6px;padding:6px 8px;margin-top:4px;"><b style="color:#93c5fd;">' + sceneNames[k] + ':</b> <span style="color:#dbeafe;">' + esc(tale[k]) + '</span></div>';
+                }).join('') + '</div>';
+            }
+
             var qaHtml = qa.length
                     ? '<div style="margin-top:6px;">' + qa.map(function (x) {
                         return '<div style="background:#0f172a;border-radius:6px;padding:6px 8px;margin-bottom:4px;"><b style="color:#fbbf24;">' + esc(x.n) + ') ' + esc(x.q) + '</b><br><span style="color:#a7f3d0;">→ ' + esc(x.a || '(yanıt yok)') + '</span></div>';
@@ -55926,7 +56006,7 @@ window.addEventListener('DOMContentLoaded', () => {
                 res.style.display = 'block';
                 res.innerHTML = '<span style="color:#4ade80;">✅ <b>' + esc(name) + '</b> dosyasına işlendi:</span> ' +
                     esc(done + '/' + total) + ' egzersiz tamam' + (kissaTitle ? ' · 📖 ' + esc(kissaTitle) : '') +
-                    (openTasks.length ? '<br><span style="color:#fbbf24;">Açık kalan: ' + esc(openTasks.join('; ')) + '</span>' : '') + qaHtml + routeHtml + sudHtml;
+                    (openTasks.length ? '<br><span style="color:#fbbf24;">Açık kalan: ' + esc(openTasks.join('; ')) + '</span>' : '') + qaHtml + routeHtml + sudHtml + taleHtml;
                 ta.value = '';
                 if (window.renderPortalHistory) window.renderPortalHistory();
                 if (window.showToast) showToast('Özet ' + name + ' dosyasına işlendi!', 'success');
@@ -59311,15 +59391,26 @@ window.addEventListener('DOMContentLoaded', () => {
                 var dCol = dD > 0 ? '#15803d' : (dD < 0 ? '#b91c1c' : '#64748b');
                 sudBadge = ' <span style="color:' + dCol + ';font-weight:700;">📊 ' + d1 + '→' + d2 + (dD !== 0 ? ' (' + (dD > 0 ? '↓' + dD : '↑' + (-dD)) + ')' : '') + '</span>';
             }
+            var taleBadge = (it.tale && typeof it.tale === 'object' && Object.keys(it.tale).length) ? ' <span style="color:#1d4ed8;font-weight:700;">✍️ kıssa</span>' : '';
+            var taleBlock = '';
+            if (it.tale && typeof it.tale === 'object') {
+                var tKeys = ['s1','s2','s3','s4','s5'].filter(function (k) { return it.tale[k]; });
+                if (tKeys.length) {
+                    var sNames = { s1: '🦸 Kahraman', s2: '🕳️ Kuyu', s3: '🧭 Rehber', s4: '⚡ Dönüm', s5: '🌅 Dönüş' };
+                    taleBlock = '<div style="margin-top:6px;display:flex;flex-direction:column;gap:4px;">' + tKeys.map(function (k) {
+                        return '<div style="background:#eff6ff;border:1px solid #bfdbfe;border-radius:6px;padding:6px 8px;"><b style="color:#1d4ed8;">' + sNames[k] + ':</b> <span style="color:#1e3a8a;">' + esc(it.tale[k]) + '</span></div>';
+                    }).join('') + '</div>';
+                }
+            }
             var qaHtml = (it.qa && it.qa.length) ? '<div style="margin-top:6px;display:flex;flex-direction:column;gap:4px;">' + it.qa.map(function (x) {
                 return '<div style="background:#fff;border:1px solid #e0f2fe;border-radius:6px;padding:6px 8px;"><b style="color:#0369a1;">' + esc(x.n) + ") " + esc(x.q) + '</b><br><span style="color:#166534;">→ ' + esc(x.a || "(yanıt yok)") + "</span></div>";
             }).join("") + "</div>" : "";
             var openHtml = (it.openTasks && it.openTasks.length) ? '<div style="margin-top:4px;font-size:10.5px;color:#b45309;">Açık kalan: ' + esc(it.openTasks.join("; ")) + "</div>" : "";
             return '<div style="background:#ffffff;border:1px solid #bae6fd;border-radius:8px;padding:10px;">' +
                 '<div style="display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap;">' +
-                    '<b style="color:#0c4a6e;font-size:11.5px;">🌿 ' + esc(dt) + " · " + esc(String(it.done)) + "/" + esc(String(it.total)) + " egzersiz tamam" + (it.kissa ? " · 📖 " + esc(it.kissa) : "") + sudBadge + "</b>" +
+                    '<b style="color:#0c4a6e;font-size:11.5px;">🌿 ' + esc(dt) + " · " + esc(String(it.done)) + "/" + esc(String(it.total)) + " egzersiz tamam" + (it.kissa ? " · 📖 " + esc(it.kissa) : "") + sudBadge + taleBadge + "</b>" +
                     '<button type="button" onclick="deletePortalFeedback(' + idx + ');" style="background:#fee2e2;color:#991b1b;border:0;padding:2px 8px;border-radius:4px;cursor:pointer;font-size:10.5px;">Sil</button>' +
-                "</div>" + qaHtml + openHtml + "</div>";
+                "</div>" + qaHtml + taleBlock + openHtml + "</div>";
         }).join("");
     };
 
