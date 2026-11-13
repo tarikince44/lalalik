@@ -5113,6 +5113,10 @@ html:not(.portal-mode) #lala-portal-view { display: none; }
                         <option value="yapilmadi">✗ Yapılamadı (Engel İncelenecek)</option>
                     </select>
                     <textarea id="t-odev-not" rows="2" placeholder="Ödev yansıması..." style="width:100%;padding:6px;border:1px solid var(--line);border-radius:6px;font:inherit;resize:vertical;" aria-label="Ödev yansıması..."></textarea>
+                    <div id="t-odev-oneri" data-adim="" style="display:none;margin-top:4px;font-size:11.5px;background:#eff6ff;border:1px solid #bfdbfe;color:#1e40af;border-radius:6px;padding:5px 8px;align-items:center;gap:8px;flex-wrap:wrap;">
+                        <span id="t-odev-oneri-text" style="flex:1;min-width:180px;"></span>
+                        <button type="button" id="t-odev-oneri-al" style="background:#2563eb;color:#fff;border:0;padding:3px 9px;border-radius:5px;font:inherit;font-size:11px;font-weight:700;cursor:pointer;">⤵ Yansıma Alanına Al</button>
+                    </div>
                 </div>
                 <div>
                     <label class="label">Bugünün Gündemi (Mentinin Derdi)</label>
@@ -5149,6 +5153,61 @@ html:not(.portal-mode) #lala-portal-view { display: none; }
                     </div>
                 </div>
             </div>
+
+            <script>
+            /* Ödev döngüsü: menti adına göre önceki seansın mikro-adımını önerir */
+            (function () {
+                function esc(s) { return String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;'); }
+                function norm(s) { return (s || '').trim().toLocaleLowerCase('tr-TR'); }
+                function findPrevStep(menti) {
+                    if (!menti || typeof getTakipData !== 'function') return null;
+                    var list = getTakipData() || [];
+                    for (var i = 0; i < list.length; i++) {
+                        if (norm(list[i].menti) === norm(menti) && (list[i].adim || '').trim()) return list[i];
+                    }
+                    return null;
+                }
+                function updateOdevSuggestion() {
+                    var box = document.getElementById('t-odev-oneri');
+                    var txt = document.getElementById('t-odev-oneri-text');
+                    var mentiEl = document.getElementById('t-menti');
+                    if (!box || !txt || !mentiEl) return;
+                    var prev = findPrevStep(mentiEl.value);
+                    if (prev) {
+                        txt.innerHTML = '⏪ Geçen seansın adımı (' + esc(prev.tarih || '?') + '): <b>' + esc(prev.adim) + '</b>';
+                        box.dataset.adim = prev.adim;
+                        box.style.display = 'flex';
+                    } else {
+                        box.dataset.adim = '';
+                        box.style.display = 'none';
+                    }
+                }
+                function init() {
+                    var mentiEl = document.getElementById('t-menti');
+                    var btn = document.getElementById('t-odev-oneri-al');
+                    var listEl = document.getElementById('takip-listesi');
+                    var saveBtn = document.getElementById('t-btn-save');
+                    if (mentiEl) {
+                        mentiEl.addEventListener('input', updateOdevSuggestion);
+                        mentiEl.addEventListener('change', updateOdevSuggestion);
+                    }
+                    if (listEl) listEl.addEventListener('click', function () { setTimeout(updateOdevSuggestion, 60); });
+                    if (saveBtn) saveBtn.addEventListener('click', function () { setTimeout(updateOdevSuggestion, 60); });
+                    if (btn) btn.addEventListener('click', function () {
+                        var box = document.getElementById('t-odev-oneri');
+                        var not = document.getElementById('t-odev-not');
+                        if (!box || !box.dataset.adim || !not) return;
+                        var prefix = 'Geçen seans adımı: ' + box.dataset.adim + ' — ';
+                        not.value = not.value.trim() ? (prefix + not.value) : prefix;
+                        not.focus();
+                    });
+                    updateOdevSuggestion();
+                }
+                if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init);
+                else init();
+                window.__takipOdevSuggest = updateOdevSuggestion;
+            })();
+            </script>
 
             <!-- Bu Haftanın Niyeti / Mikro-Adım -->
             <div class="box teal" style="margin-bottom:12px;">
@@ -36308,10 +36367,15 @@ ightarrow$ 🟣 Bilinmeyen)</span>
         if (stat) {
             const avgMood = (list.reduce((acc, c) => acc + Number(c.mood || 0), 0) / list.length).toFixed(1)
             const avgStress = (list.reduce((acc, c) => acc + Number(c.stress || 0), 0) / list.length).toFixed(1)
+            const odevN = { tamam: 0, kismen: 0, yapilmadi: 0 }
+            list.forEach(c => { if (odevN[c.odevDurum] !== undefined) odevN[c.odevDurum]++ })
+            const odevToplam = odevN.tamam + odevN.kismen + odevN.yapilmadi
+            const uyum = odevToplam ? Math.round((odevN.tamam + odevN.kismen * 0.5) / odevToplam * 100) : 0
             stat.innerHTML = `
                 <div>Toplam Görüşme Sayısı: <b>${list.length}</b></div>
                 <div>Ortalama Ruh Hâli: <b>${avgMood} / 10</b></div>
                 <div>Ortalama Stres Düzeyi: <b>${avgStress} / 10</b></div>
+                <div>Ödev Uyumu: <b>%${uyum}</b> <span style="font-size:11px;color:#64748b;">(✓ ${odevN.tamam} · ~ ${odevN.kismen} · ✗ ${odevN.yapilmadi})</span></div>
                 <div style="margin-top:6px;font-size:12px;color:#059669;">Tüm kayıtlar güvenle bu tarayıcıda saklanmaktadır.</div>
             `
         }
