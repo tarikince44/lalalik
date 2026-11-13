@@ -55573,7 +55573,7 @@ window.addEventListener('DOMContentLoaded', () => {
             return decodeURIComponent(escape(atob(s)));
         }
         function payloadFrom(name, d) {
-            return { n: name, t: d.tasks && d.tasks.length ? d.tasks : DEFAULT_TASKS, a: d.appt || '', c: d.crisis || DEFAULT_CRISIS, k: d.kissa || '' };
+            return { n: name, t: d.tasks && d.tasks.length ? d.tasks : DEFAULT_TASKS, a: d.appt || '', c: d.crisis || DEFAULT_CRISIS, k: d.kissa || '', r: d.route || '' };
         }
         function buildLink(payload) {
             return location.origin + location.pathname + '#portal=' + b64urlEncode(JSON.stringify(payload));
@@ -55600,7 +55600,10 @@ window.addEventListener('DOMContentLoaded', () => {
             var kname = document.getElementById('portal-edit-kissa-name');
             var kcur = d.kissa && window.LalaKissalar ? window.LalaKissalar[d.kissa] : null;
             if (krow && kname) {
-                if (kcur) { kname.textContent = kcur.title; krow.style.display = 'block'; }
+                if (kcur) {
+                    kname.textContent = kcur.title + (d.route && d.route.t ? "  ·  🛤️ " + d.route.t + " (Hafta " + (d.route.s + 1) + "/" + d.route.n + ")" : "");
+                    krow.style.display = 'block';
+                }
                 else { krow.style.display = 'none'; }
             }
             renderPreview();
@@ -55612,7 +55615,8 @@ window.addEventListener('DOMContentLoaded', () => {
                 tasks: document.getElementById('portal-edit-tasks').value.split('\n').map(function (s) { return s.trim(); }).filter(Boolean),
                 appt: document.getElementById('portal-edit-appt').value,
                 crisis: document.getElementById('portal-edit-crisis').value.trim(),
-                kissa: prev.kissa || ''
+                kissa: prev.kissa || '',
+                route: prev.route || ''
             };
         }
         function renderPreview() {
@@ -55686,6 +55690,12 @@ window.addEventListener('DOMContentLoaded', () => {
                     '<input type="checkbox" data-i="' + i + '"' + checked + ' style="transform:scale(1.2);"><span>' + esc(t) + '</span></label>';
             }).join('');
             var kk = payload.k && window.LalaKissalar ? window.LalaKissalar[payload.k] : null;
+            var routeHtml = '';
+            if (payload.r && payload.r.t) {
+                var dots = '';
+                for (var di = 0; di < payload.r.n; di++) { dots += '<span style="display:inline-block;width:7px;height:7px;border-radius:50%;margin-left:3px;background:' + (di <= payload.r.s ? '#fbbf24' : 'rgba(251,191,36,.25)') + ';"></span>'; }
+                routeHtml = '<div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:8px;"><span style="font-size:10px;color:#fbbf24;font-weight:700;">🛤️ ' + esc(payload.r.t) + ' · Hafta ' + (payload.r.s + 1) + '/' + payload.r.n + '</span><span>' + dots + '</span></div>';
+            }
             var kissaAnsKey = kk ? ('lala_portal_kissa_' + b64urlEncode(payload.n + '|' + payload.k)) : null;
             var kissaAns = ['', '', ''];
             if (kissaAnsKey) {
@@ -55697,6 +55707,7 @@ window.addEventListener('DOMContentLoaded', () => {
             var kissaHtml = '';
             if (kk) {
                 kissaHtml = '<div style="background:#3b2f0b;border:1px solid #b45309;border-radius:12px;padding:12px;margin-bottom:12px;">' +
+                    routeHtml +
                     '<b style="font-size:12.5px;color:#fbbf24;display:block;margin-bottom:6px;">📖 Bu Haftanın Kıssası</b>' +
                     '<b style="font-size:12.5px;color:#fde68a;display:block;">' + esc(kk.title) + '</b>' +
                     '<div style="font-size:10.5px;color:#d97706;margin:2px 0 8px;">' + esc(kk.theme) + '</div>' +
@@ -55796,6 +55807,17 @@ window.addEventListener('DOMContentLoaded', () => {
             var kissaMatch = text.match(/📖 Kıssa Çalışması:\s*(.+)/);
             var kissaTitle = kissaMatch ? kissaMatch[1].trim() : '';
 
+            var routeRes = null;
+            if (window.kissaRouteAdvanceFromImport && kissaTitle) {
+                try { routeRes = window.kissaRouteAdvanceFromImport(name, kissaTitle); } catch (re) {}
+            }
+            var routeHtml = '';
+            if (routeRes && routeRes.done) {
+                routeHtml = '<div style="margin-top:6px;color:#4ade80;">🎉 <b>' + esc(routeRes.title) + '</b> tamamlandı — danışan tüm haftaları bitirdi!</div>';
+            } else if (routeRes && routeRes.advanced) {
+                routeHtml = '<div style="margin-top:6px;color:#fbbf24;">🛤️ Rota ilerledi (' + routeRes.step + '/' + routeRes.total + '). Sıradaki: <b>' + esc(routeRes.nextTitle) + '</b> <button type="button" onclick="kissaRoutePushNext(\'' + routeRes.nextKey + '\');" style="margin-left:6px;background:#7c3aed;color:#fff;border:0;padding:3px 9px;border-radius:5px;font-size:10.5px;font-weight:700;cursor:pointer;">📲 Portala Gönder</button></div>';
+            }
+
             var qa = [];
             for (var i = 0; i < lines.length; i++) {
                 var qm = lines[i].match(/^\s*(\d+)\)\s+(.+)/);
@@ -55855,7 +55877,7 @@ window.addEventListener('DOMContentLoaded', () => {
                 res.style.display = 'block';
                 res.innerHTML = '<span style="color:#4ade80;">✅ <b>' + esc(name) + '</b> dosyasına işlendi:</span> ' +
                     esc(done + '/' + total) + ' egzersiz tamam' + (kissaTitle ? ' · 📖 ' + esc(kissaTitle) : '') +
-                    (openTasks.length ? '<br><span style="color:#fbbf24;">Açık kalan: ' + esc(openTasks.join('; ')) + '</span>' : '') + qaHtml;
+                    (openTasks.length ? '<br><span style="color:#fbbf24;">Açık kalan: ' + esc(openTasks.join('; ')) + '</span>' : '') + qaHtml + routeHtml;
                 ta.value = '';
                 if (window.renderPortalHistory) window.renderPortalHistory();
                 if (window.showToast) showToast('Özet ' + name + ' dosyasına işlendi!', 'success');
@@ -55864,13 +55886,14 @@ window.addEventListener('DOMContentLoaded', () => {
             }
         }
 
-        function setKissa(key) {
+        function setKissa(key, routeInfo) {
             var name = activeClient();
             var ed = document.getElementById('portal-edit-name');
             if (!name && ed) name = ed.value.trim();
             if (!name) return '';
             var d = load(name);
             d.kissa = key;
+            if (routeInfo) d.route = routeInfo; else delete d.route;
             persist(name, d);
             return name;
         }
@@ -58272,6 +58295,11 @@ window.addEventListener('DOMContentLoaded', () => {
                 </div>
             </div>
 
+            <!-- Kıssa Rotası: çok haftalık tematik yolculuk -->
+            <div id="kissa-route-block" style="background:#f5f3ff;border:1.5px solid #c4b5fd;border-radius:8px;padding:12px;margin-bottom:14px;">
+                <!-- JS ile doldurulur -->
+            </div>
+
             <!-- Kıssa Eşleştirme Asistanı: serbest metinden otomatik öneri -->
             <div style="background:#fffbeb;border:1.5px dashed #f59e0b;border-radius:8px;padding:12px;margin-bottom:14px;">
                 <b style="font-size:12.5px;color:#92400e;display:flex;align-items:center;gap:6px;margin-bottom:4px;">🧠 Kıssa Eşleştirme Asistanı</b>
@@ -58786,6 +58814,7 @@ window.addEventListener('DOMContentLoaded', () => {
         }
         container.innerHTML = html;
         selectKissa("yusuf");
+        if (typeof renderKissaRouteBlock === "function") renderKissaRouteBlock();
     };
 
     window.selectKissa = function(key) {
@@ -58895,6 +58924,140 @@ window.addEventListener('DOMContentLoaded', () => {
     };
     for (var _kx in KISSALAR_EXTRA) { if (!KISSALAR[_kx]) KISSALAR[_kx] = KISSALAR_EXTRA[_kx]; }
     window.LalaKissalar = KISSALAR;
+
+    // =========================================================================
+    // 3c. KISSA ROTASI (çok haftalık tematik kıssa yolculuğu)
+    // =========================================================================
+    var KISSA_ROUTES = {
+        "yas":         { title: "Yas ve Kabullenme Rotası",                steps: ["eyyub", "ney", "kehf", "simurg"] },
+        "ihanet":      { title: "İhanet, Güven ve Affetme Rotası",         steps: ["yusuf", "papagan", "musa_hizir", "simurg"] },
+        "kaygi":       { title: "Korku ve Kaygıyla Yüzleşme Rotası",       steps: ["ibrahim", "yunus", "meryem", "nasreddin"] },
+        "anlam":       { title: "Anlam, Yön ve İçsel Liderlik Rotası",     steps: ["ney", "simurg", "fil", "taptuk"] },
+        "tukenmislik": { title: "Tükenmişlik ve Stratejik Dinlenme Rotası", steps: ["kehf", "eyyub", "nasreddin", "ney"] }
+    };
+    window.KissaRoutes = KISSA_ROUTES;
+
+    function kissaRouteKey(client) { return "lalalik_kissa_route__" + client; }
+    function kissaRouteGet(client) { try { return JSON.parse(localStorage.getItem(kissaRouteKey(client)) || "null"); } catch (e) { return null; } }
+    function kissaRouteSave(client, rt) { try { localStorage.setItem(kissaRouteKey(client), JSON.stringify(rt)); } catch (e) {} }
+    function kissaRouteClear(client) { try { localStorage.removeItem(kissaRouteKey(client)); } catch (e) {} }
+    function kissaRouteActiveClient() {
+        var sel = document.getElementById("global-active-client-select");
+        return (sel && sel.value && sel.value !== "__NEW__") ? sel.value : "";
+    }
+    // Verilen kıssa, danışanın rotasında şu anki haftanın kıssasıysa portal rota bilgisini döndürür
+    window.kissaRouteInfoFor = function(client, key) {
+        var rt = client ? kissaRouteGet(client) : null;
+        if (!rt || !KISSA_ROUTES[rt.routeId]) return null;
+        var R = KISSA_ROUTES[rt.routeId];
+        if (R.steps[rt.step] !== key) return null;
+        return { t: R.title, s: rt.step, n: R.steps.length };
+    };
+
+    window.startKissaRouteFromSelect = function() {
+        var sel = document.getElementById("kissa-route-select");
+        if (sel) startKissaRoute(sel.value);
+    };
+    window.startKissaRoute = function(routeId) {
+        var client = kissaRouteActiveClient();
+        if (!client) { alert("Önce üst şeritten aktif danışanı seçin."); return; }
+        var R = KISSA_ROUTES[routeId];
+        if (!R) return;
+        kissaRouteSave(client, { routeId: routeId, step: 0, startedAt: new Date().toISOString(), history: [] });
+        if (window.LalaPortal && LalaPortal.setKissa) LalaPortal.setKissa(R.steps[0], { t: R.title, s: 0, n: R.steps.length });
+        if (window.showToast) showToast("🛤️ " + R.title + " başladı — 1. kıssa portalda!", "success");
+        renderKissaRouteBlock();
+    };
+    window.kissaRouteManualAdvance = function() {
+        var client = kissaRouteActiveClient();
+        var rt = client ? kissaRouteGet(client) : null;
+        if (!rt || !KISSA_ROUTES[rt.routeId]) return;
+        var R = KISSA_ROUTES[rt.routeId];
+        rt.step++;
+        if (rt.step >= R.steps.length) {
+            kissaRouteClear(client);
+            if (window.showToast) showToast("🎉 " + R.title + " tamamlandı!", "success");
+        } else {
+            kissaRouteSave(client, rt);
+            var nk = KISSALAR[R.steps[rt.step]];
+            if (window.showToast) showToast("⏭️ Sıradaki hafta: " + (nk ? nk.title : ""), "info");
+        }
+        renderKissaRouteBlock();
+    };
+    window.endKissaRoute = function() {
+        var client = kissaRouteActiveClient();
+        if (client) kissaRouteClear(client);
+        renderKissaRouteBlock();
+    };
+    window.kissaRoutePushNext = function(key) {
+        var client = kissaRouteActiveClient();
+        if (!client || !window.LalaPortal || !LalaPortal.setKissa) return;
+        var info = window.kissaRouteInfoFor(client, key);
+        LalaPortal.setKissa(key, info);
+        var k = KISSALAR[key];
+        if (window.showToast) showToast("📲 " + (k ? k.title : key) + " → " + client + " portalında", "success");
+        renderKissaRouteBlock();
+    };
+
+    // Danışan özeti işlenirken: özetin kıssası rotanın şu anki haftasıysa ilerlet
+    window.kissaRouteAdvanceFromImport = function(client, kissaTitle) {
+        if (!client || !kissaTitle) return null;
+        var rt = kissaRouteGet(client);
+        if (!rt || !KISSA_ROUTES[rt.routeId]) return null;
+        var R = KISSA_ROUTES[rt.routeId];
+        var curKey = R.steps[rt.step];
+        var cur = KISSALAR[curKey];
+        if (!cur) return null;
+        var head = cur.title.split(":")[0].trim();
+        if (kissaTitle.indexOf(head) === -1 && head.indexOf(kissaTitle) === -1) return null;
+        rt.step++;
+        if (rt.step >= R.steps.length) {
+            kissaRouteClear(client);
+            if (window.renderKissaRouteBlock) renderKissaRouteBlock();
+            return { done: true, title: R.title };
+        }
+        rt.history = rt.history || [];
+        rt.history.push({ key: curKey, at: new Date().toISOString() });
+        kissaRouteSave(client, rt);
+        var nextKey = R.steps[rt.step];
+        var next = KISSALAR[nextKey];
+        if (window.renderKissaRouteBlock) renderKissaRouteBlock();
+        return { advanced: true, title: R.title, step: rt.step, total: R.steps.length, nextKey: nextKey, nextTitle: next ? next.title : "" };
+    };
+
+    window.renderKissaRouteBlock = function() {
+        var box = document.getElementById("kissa-route-block");
+        if (!box) return;
+        function escH(s) { return String(s == null ? "" : s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;"); }
+        var client = kissaRouteActiveClient();
+        var rt = client ? kissaRouteGet(client) : null;
+        var R = rt ? KISSA_ROUTES[rt.routeId] : null;
+        if (!rt || !R) {
+            var opts = "";
+            for (var id in KISSA_ROUTES) opts += '<option value="' + id + '">' + escH(KISSA_ROUTES[id].title) + " (" + KISSA_ROUTES[id].steps.length + " hafta)</option>";
+            box.innerHTML = '<b style="font-size:12.5px;color:#6d28d9;display:block;margin-bottom:4px;">🛤️ Kıssa Rotası (haftalık tematik yolculuk)</b>' +
+                '<p style="font-size:11px;color:#6b7280;margin:0 0 8px;line-height:1.4;">Danışana çok haftalık sıralı kıssa programı başlatın; portal her hafta sıradaki kıssayı sunar, danışan özeti geldikçe rota kendiliğinden ilerler.' + (client ? "" : ' <b style="color:#b45309;">Önce üst şeritten aktif danışanı seçin.</b>') + "</p>" +
+                '<div style="display:flex;gap:6px;flex-wrap:wrap;">' +
+                    '<select id="kissa-route-select" style="flex:1;min-width:200px;padding:6px;border:1px solid #c4b5fd;border-radius:6px;font-size:11.5px;">' + opts + "</select>" +
+                    '<button type="button" onclick="startKissaRouteFromSelect();" style="background:#7c3aed;color:#fff;border:0;padding:6px 12px;border-radius:6px;font-size:11.5px;font-weight:700;cursor:pointer;"' + (client ? "" : " disabled") + ">▶️ Rotayı Başlat</button>" +
+                "</div>";
+            return;
+        }
+        var stepsHtml = R.steps.map(function (k, i) {
+            var st = i < rt.step ? "✅" : (i === rt.step ? "📍" : "⚪");
+            var nm = KISSALAR[k] ? KISSALAR[k].title.split(":")[0] : k;
+            return '<span style="white-space:nowrap;">' + st + " " + escH(nm) + "</span>";
+        }).join('<span style="color:#c4b5fd;"> → </span>');
+        var curKey = R.steps[rt.step];
+        var cur = KISSALAR[curKey];
+        box.innerHTML = '<b style="font-size:12.5px;color:#6d28d9;display:block;margin-bottom:4px;">🛤️ Aktif Rota: ' + escH(R.title) + ' <span style="color:#64748b;font-weight:600;">(' + escH(client) + " · Hafta " + (rt.step + 1) + "/" + R.steps.length + ")</span></b>" +
+            '<div style="font-size:11px;color:#4c1d95;margin-bottom:8px;line-height:1.9;">' + stepsHtml + "</div>" +
+            '<div style="display:flex;gap:6px;flex-wrap:wrap;">' +
+                '<button type="button" onclick="kissaRoutePushNext(\'' + curKey + '\');" style="background:#7c3aed;color:#fff;border:0;padding:5px 10px;border-radius:6px;font-size:11px;font-weight:700;cursor:pointer;">📲 Şu Anki Kıssayı Portala Gönder' + (cur ? " (" + escH(cur.title.split(":")[0]) + ")" : "") + "</button>" +
+                '<button type="button" onclick="kissaRouteManualAdvance();" style="background:#ede9fe;border:1px solid #c4b5fd;color:#6d28d9;padding:5px 10px;border-radius:6px;font-size:11px;font-weight:600;cursor:pointer;">⏭️ Sonraki Haftaya Geç</button>' +
+                '<button type="button" onclick="if(confirm(\'Rota sonlandırılsın mı? İlerleme silinir.\')) endKissaRoute();" style="background:#fee2e2;border:0;color:#991b1b;padding:5px 10px;border-radius:6px;font-size:11px;font-weight:600;cursor:pointer;">⏹️ Sonlandır</button>' +
+            "</div>";
+    };
 
     // Anahtar kelime haritası (normalize edilmiş Türkçe kökler; ı→i, ş→s, ğ→g, ü→u, ö→o, ç→c)
     var KISSA_KEYWORDS = {
@@ -59052,7 +59215,10 @@ window.addEventListener('DOMContentLoaded', () => {
     window.kissaAssistToPortal = function(key) {
         var k = KISSALAR[key];
         if (!k || !window.LalaPortal || !LalaPortal.setKissa) return;
-        var name = LalaPortal.setKissa(key);
+        var sel0 = document.getElementById("global-active-client-select");
+        var client0 = (sel0 && sel0.value && sel0.value !== "__NEW__") ? sel0.value : "";
+        var routeInfo0 = window.kissaRouteInfoFor ? window.kissaRouteInfoFor(client0, key) : null;
+        var name = LalaPortal.setKissa(key, routeInfo0);
         if (!name) { alert("Önce üst şeritten aktif danışanı seçin."); return; }
         if (window.showToast) showToast("📖 " + k.title + " → " + name + " portalına eklendi", "success");
         var km = document.getElementById("kissa-metafor-modal");
