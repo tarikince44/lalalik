@@ -58770,6 +58770,7 @@ window.addEventListener('DOMContentLoaded', () => {
                 '<div style="display:flex;gap:6px;flex-wrap:wrap;">' +
                     '<button type="button" onclick="selectKissa(\'' + item.key + '\');document.getElementById(\'kissa-content-card\').scrollIntoView({behavior:\'smooth\',block:\'start\'});" style="background:#d97706;color:#fff;border:0;padding:5px 10px;border-radius:6px;font-size:11px;font-weight:700;cursor:pointer;">📜 Bu Kıssayı Aç</button>' +
                     (sheetId ? '<button type="button" onclick="kissaAssistGotoSheet(\'' + sheetId + '\');" style="background:#f1f5f9;border:1px solid #cbd5e1;color:#334155;padding:5px 10px;border-radius:6px;font-size:11px;font-weight:600;cursor:pointer;">📄 Çalışma Sayfasına Git</button>' : '') +
+                    '<button type="button" onclick="kissaAssistToCrm(\'' + item.key + '\');" style="background:#0f766e;color:#fff;border:0;padding:5px 10px;border-radius:6px;font-size:11px;font-weight:700;cursor:pointer;">🗂️ Seans Dosyasına Ekle</button>' +
                 '</div>' +
             '</div>';
         }
@@ -58784,6 +58785,56 @@ window.addEventListener('DOMContentLoaded', () => {
             el.scrollIntoView({ behavior: "smooth", block: "start" });
         } else if (window.location.hash !== "#katman/" + sheetId) {
             window.location.hash = "#katman/" + sheetId;
+        }
+    };
+
+    // Önerilen kıssayı tek tıkla aktif danışanın CRM seans dosyasına düşer
+    window.kissaAssistToCrm = function(key) {
+        var k = KISSALAR[key];
+        if (!k) return;
+        var client = (typeof getActiveClientName === "function") ? getActiveClientName() : "Varsayilan_Danisan";
+        var rec = {
+            name: client,
+            session: "Kıssa Terapisi",
+            module: "📖 Kıssa Önerisi",
+            notes: "Asistan önerisi: " + k.title + " (" + k.theme + "). Açılış sorusu: " + k.q1,
+            homework: "Seansta " + k.title + " kıssası anlatılıp 3 metaforik içgörü sorusu işlenecek; danışan yanıtı not edilecek.",
+            date: new Date().toISOString()
+        };
+        function esc(s) {
+            return String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+        }
+        try {
+            var list = [];
+            try {
+                var stored = (typeof safeStorage !== "undefined" ? safeStorage.getItem("lalalik_crm_records") : localStorage.getItem("lalalik_crm_records"));
+                list = JSON.parse(stored || "[]");
+                if (!Array.isArray(list)) list = [];
+            } catch (pe) { list = []; }
+            list.unshift(rec);
+            if (typeof safeStorage !== "undefined") safeStorage.setItem("lalalik_crm_records", JSON.stringify(list));
+            else localStorage.setItem("lalalik_crm_records", JSON.stringify(list));
+
+            // CRM tablosu açıksa/bellekteyse satırı anında yansıt
+            var tbody = document.getElementById("crm-records-tbody");
+            if (tbody) {
+                var rows = list.map(function(r, i) {
+                    return '<tr style="border-bottom:1px solid #f1f5f9;">' +
+                        '<td style="padding:6px 10px;font-weight:700;color:#0f766e;">' + esc(r.name) + '</td>' +
+                        '<td style="padding:6px 10px;">' + esc(r.session) + '</td>' +
+                        '<td style="padding:6px 10px;"><span style="background:#e0f2fe;color:#0369a1;padding:2px 6px;border-radius:4px;font-size:10px;">' + esc(r.module) + '</span></td>' +
+                        '<td style="padding:6px 10px;font-size:11px;">' + esc(r.notes) + '</td>' +
+                        '<td style="padding:6px 10px;font-size:11px;color:#b45309;">' + esc(r.homework) + '</td>' +
+                        '<td style="padding:6px 10px;text-align:center;"><button type="button" onclick="deleteCrmRecord(' + i + ')" style="background:#fee2e2;color:#991b1b;border:0;padding:2px 6px;border-radius:4px;cursor:pointer;font-size:10.5px;">Sil</button></td>' +
+                    '</tr>';
+                }).join("");
+                tbody.innerHTML = rows;
+            }
+            if (window.showToast) showToast("Kıssa önerisi " + client + " dosyasına eklendi!", "success");
+            else if (typeof appAlert === "function") appAlert("Kıssa önerisi " + client + " seans dosyasına eklendi!", "Kayıt Başarılı");
+            else alert("Kıssa önerisi seans dosyasına eklendi!");
+        } catch (e) {
+            alert("Kayıt eklenemedi: " + e.message);
         }
     };
 
