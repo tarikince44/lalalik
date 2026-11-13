@@ -55704,6 +55704,17 @@ window.addEventListener('DOMContentLoaded', () => {
                     if (Array.isArray(ka)) kissaAns = [ka[0] || '', ka[1] || '', ka[2] || ''];
                 } catch (e) {}
             }
+            var sudKey = kk ? ('lala_portal_sud_' + b64urlEncode(payload.n + '|' + payload.k)) : null;
+            var sud = { pre: null, post: null };
+            if (sudKey) {
+                try {
+                    var sd = JSON.parse(localStorage.getItem(sudKey));
+                    if (sd && typeof sd === 'object') {
+                        if (typeof sd.pre === 'number') sud.pre = sd.pre;
+                        if (typeof sd.post === 'number') sud.post = sd.post;
+                    }
+                } catch (e) {}
+            }
             var kissaHtml = '';
             if (kk) {
                 kissaHtml = '<div style="background:#3b2f0b;border:1px solid #b45309;border-radius:12px;padding:12px;margin-bottom:12px;">' +
@@ -55711,10 +55722,18 @@ window.addEventListener('DOMContentLoaded', () => {
                     '<b style="font-size:12.5px;color:#fbbf24;display:block;margin-bottom:6px;">📖 Bu Haftanın Kıssası</b>' +
                     '<b style="font-size:12.5px;color:#fde68a;display:block;">' + esc(kk.title) + '</b>' +
                     '<div style="font-size:10.5px;color:#d97706;margin:2px 0 8px;">' + esc(kk.theme) + '</div>' +
+                    '<div style="background:rgba(0,0,0,.2);border-radius:8px;padding:8px 10px;margin-bottom:10px;">' +
+                        '<b style="font-size:11px;color:#fbbf24;display:block;margin-bottom:4px;">📊 Okumadan önce sıkıntı düzeyiniz (0=hiç, 10=dayanılmaz): <span id="lala-sud-pre-val">' + (sud.pre !== null ? sud.pre : '—') + '</span></b>' +
+                        '<input type="range" id="lala-sud-pre" min="0" max="10" step="1" value="' + (sud.pre !== null ? sud.pre : 5) + '" style="width:100%;accent-color:#f59e0b;cursor:pointer;">' +
+                    '</div>' +
                     '<p style="margin:0 0 10px;font-size:11.5px;color:#fef3c7;line-height:1.55;">' + esc(kk.wisdom) + '</p>' +
                     '<b style="font-size:11px;color:#fbbf24;display:block;margin-bottom:6px;">💭 Üzerine düşünün ve yanıtınızı yazın:</b>' +
                     [kk.q1, kk.q2, kk.q3].map(function (q, i) { return '<div style="background:rgba(0,0,0,.25);border-radius:8px;padding:8px 10px;margin-bottom:6px;font-size:11.5px;color:#fde68a;line-height:1.5;"><b>' + (i + 1) + '.</b> ' + esc(q) + '<textarea data-ki="' + i + '" rows="2" placeholder="Düşünceleriniz..." style="width:100%;box-sizing:border-box;margin-top:6px;background:rgba(0,0,0,.35);border:1px solid #92610a;border-radius:6px;padding:6px 8px;font-size:11.5px;color:#fde68a;resize:vertical;font-family:inherit;">' + esc(kissaAns[i]) + '</textarea></div>'; }).join('') +
-                    '<div style="font-size:10px;color:#a16207;margin-top:4px;">Yanıtlarınız yalnızca bu cihazda saklanır; hazır olunca aşağıdaki özet düğmesiyle koçunuza iletebilirsiniz.</div></div>';
+                    '<div style="background:rgba(0,0,0,.2);border-radius:8px;padding:8px 10px;margin-top:8px;">' +
+                        '<b style="font-size:11px;color:#fbbf24;display:block;margin-bottom:4px;">📊 Çalışmayı bitirirken sıkıntı düzeyiniz: <span id="lala-sud-post-val">' + (sud.post !== null ? sud.post : '—') + '</span></b>' +
+                        '<input type="range" id="lala-sud-post" min="0" max="10" step="1" value="' + (sud.post !== null ? sud.post : 5) + '" style="width:100%;accent-color:#f59e0b;cursor:pointer;">' +
+                    '</div>' +
+                    '<div style="font-size:10px;color:#a16207;margin-top:4px;">Yanıtlarınız ve puanlarınız yalnızca bu cihazda saklanır; hazır olunca aşağıdaki özet düğmesiyle koçunuza iletebilirsiniz.</div></div>';
             }
             host.innerHTML =
                 '<div style="max-width:440px;margin:0 auto;padding:20px 16px 40px;color:#f8fafc;">' +
@@ -55753,6 +55772,18 @@ window.addEventListener('DOMContentLoaded', () => {
                     });
                 });
             }
+            if (kk && sudKey) {
+                ['pre', 'post'].forEach(function (kind) {
+                    var slider = document.getElementById('lala-sud-' + kind);
+                    var label = document.getElementById('lala-sud-' + kind + '-val');
+                    if (!slider) return;
+                    slider.addEventListener('input', function () {
+                        sud[kind] = +slider.value;
+                        if (label) label.textContent = slider.value;
+                        try { localStorage.setItem(sudKey, JSON.stringify(sud)); } catch (err) {}
+                    });
+                });
+            }
             document.getElementById('lala-portal-summary').addEventListener('click', function () {
                 var lines = (payload.t || []).map(function (t, i) { return (state[i] ? '✅' : '⬜') + ' ' + t; }).join('\n');
                 var doneCount = (payload.t || []).filter(function (t, i) { return state[i]; }).length;
@@ -55765,6 +55796,7 @@ window.addEventListener('DOMContentLoaded', () => {
                         if (ans) { anyAns = true; msg += '\n\n' + (i + 1) + ') ' + q + '\n→ ' + ans; }
                     });
                     if (!anyAns) msg += ' (henüz yanıt yazılmadı)';
+                    if (sud.pre !== null || sud.post !== null) msg += '\n\n📊 Sıkıntı puanı (0-10): önce ' + (sud.pre !== null ? sud.pre : '—') + ' → sonra ' + (sud.post !== null ? sud.post : '—');
                 }
                 if (navigator.clipboard && navigator.clipboard.writeText) {
                     navigator.clipboard.writeText(msg).then(function () { alert('Özet kopyalandı; WhatsApp\'a yapıştırıp koçunuza gönderebilirsiniz.'); });
@@ -55806,6 +55838,13 @@ window.addEventListener('DOMContentLoaded', () => {
 
             var kissaMatch = text.match(/📖 Kıssa Çalışması:\s*(.+)/);
             var kissaTitle = kissaMatch ? kissaMatch[1].trim() : '';
+
+            var sudPre = null, sudPost = null;
+            var sudMatch = text.match(/Sıkıntı puanı[^\n]*?önce\s*(\d+|—)\s*→\s*sonra\s*(\d+|—)/);
+            if (sudMatch) {
+                if (sudMatch[1] !== '—') sudPre = parseInt(sudMatch[1], 10);
+                if (sudMatch[2] !== '—') sudPost = parseInt(sudMatch[2], 10);
+            }
 
             var routeRes = null;
             if (window.kissaRouteAdvanceFromImport && kissaTitle) {
@@ -55852,7 +55891,7 @@ window.addEventListener('DOMContentLoaded', () => {
                 var fbKey = 'lalalik_portal_feedback__' + name;
                 var fbList = [];
                 try { fbList = JSON.parse(localStorage.getItem(fbKey) || '[]'); if (!Array.isArray(fbList)) fbList = []; } catch (fe) { fbList = []; }
-                fbList.unshift({ date: new Date().toISOString(), done: done, total: total, kissa: kissaTitle, qa: qa, doneTasks: doneTasks, openTasks: openTasks });
+                fbList.unshift({ date: new Date().toISOString(), done: done, total: total, kissa: kissaTitle, qa: qa, doneTasks: doneTasks, openTasks: openTasks, sudPre: sudPre, sudPost: sudPost });
                 localStorage.setItem(fbKey, JSON.stringify(fbList));
 
                 var tbody = document.getElementById('crm-records-tbody');
@@ -55869,7 +55908,17 @@ window.addEventListener('DOMContentLoaded', () => {
                     }).join('');
                 }
 
-                var qaHtml = qa.length
+                var sudHtml = '';
+            if (sudPre !== null || sudPost !== null) {
+                var deltaTxt = '';
+                if (sudPre !== null && sudPost !== null) {
+                    var dd = sudPre - sudPost;
+                    deltaTxt = dd > 0 ? ' <span style="color:#4ade80;">(↓' + dd + ' azalma)</span>' : (dd < 0 ? ' <span style="color:#fca5a5;">(↑' + (-dd) + ' artış)</span>' : ' (değişim yok)');
+                }
+                sudHtml = '<div style="margin-top:6px;color:#93c5fd;">📊 Sıkıntı puanı: ' + (sudPre !== null ? sudPre : '—') + ' → ' + (sudPost !== null ? sudPost : '—') + deltaTxt + '</div>';
+            }
+
+            var qaHtml = qa.length
                     ? '<div style="margin-top:6px;">' + qa.map(function (x) {
                         return '<div style="background:#0f172a;border-radius:6px;padding:6px 8px;margin-bottom:4px;"><b style="color:#fbbf24;">' + esc(x.n) + ') ' + esc(x.q) + '</b><br><span style="color:#a7f3d0;">→ ' + esc(x.a || '(yanıt yok)') + '</span></div>';
                     }).join('') + '</div>'
@@ -55877,7 +55926,7 @@ window.addEventListener('DOMContentLoaded', () => {
                 res.style.display = 'block';
                 res.innerHTML = '<span style="color:#4ade80;">✅ <b>' + esc(name) + '</b> dosyasına işlendi:</span> ' +
                     esc(done + '/' + total) + ' egzersiz tamam' + (kissaTitle ? ' · 📖 ' + esc(kissaTitle) : '') +
-                    (openTasks.length ? '<br><span style="color:#fbbf24;">Açık kalan: ' + esc(openTasks.join('; ')) + '</span>' : '') + qaHtml + routeHtml;
+                    (openTasks.length ? '<br><span style="color:#fbbf24;">Açık kalan: ' + esc(openTasks.join('; ')) + '</span>' : '') + qaHtml + routeHtml + sudHtml;
                 ta.value = '';
                 if (window.renderPortalHistory) window.renderPortalHistory();
                 if (window.showToast) showToast('Özet ' + name + ' dosyasına işlendi!', 'success');
@@ -59254,13 +59303,21 @@ window.addEventListener('DOMContentLoaded', () => {
         listEl.innerHTML = items.map(function (it, idx) {
             var dt = "";
             try { dt = new Date(it.date).toLocaleString("tr-TR", { day: "numeric", month: "long", hour: "2-digit", minute: "2-digit" }); } catch (e) { dt = it.date || ""; }
+            var sudBadge = '';
+            if (typeof it.sudPre === 'number' || typeof it.sudPost === 'number') {
+                var d1 = (typeof it.sudPre === 'number') ? it.sudPre : '—';
+                var d2 = (typeof it.sudPost === 'number') ? it.sudPost : '—';
+                var dD = (typeof it.sudPre === 'number' && typeof it.sudPost === 'number') ? (it.sudPre - it.sudPost) : 0;
+                var dCol = dD > 0 ? '#15803d' : (dD < 0 ? '#b91c1c' : '#64748b');
+                sudBadge = ' <span style="color:' + dCol + ';font-weight:700;">📊 ' + d1 + '→' + d2 + (dD !== 0 ? ' (' + (dD > 0 ? '↓' + dD : '↑' + (-dD)) + ')' : '') + '</span>';
+            }
             var qaHtml = (it.qa && it.qa.length) ? '<div style="margin-top:6px;display:flex;flex-direction:column;gap:4px;">' + it.qa.map(function (x) {
                 return '<div style="background:#fff;border:1px solid #e0f2fe;border-radius:6px;padding:6px 8px;"><b style="color:#0369a1;">' + esc(x.n) + ") " + esc(x.q) + '</b><br><span style="color:#166534;">→ ' + esc(x.a || "(yanıt yok)") + "</span></div>";
             }).join("") + "</div>" : "";
             var openHtml = (it.openTasks && it.openTasks.length) ? '<div style="margin-top:4px;font-size:10.5px;color:#b45309;">Açık kalan: ' + esc(it.openTasks.join("; ")) + "</div>" : "";
             return '<div style="background:#ffffff;border:1px solid #bae6fd;border-radius:8px;padding:10px;">' +
                 '<div style="display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap;">' +
-                    '<b style="color:#0c4a6e;font-size:11.5px;">🌿 ' + esc(dt) + " · " + esc(String(it.done)) + "/" + esc(String(it.total)) + " egzersiz tamam" + (it.kissa ? " · 📖 " + esc(it.kissa) : "") + "</b>" +
+                    '<b style="color:#0c4a6e;font-size:11.5px;">🌿 ' + esc(dt) + " · " + esc(String(it.done)) + "/" + esc(String(it.total)) + " egzersiz tamam" + (it.kissa ? " · 📖 " + esc(it.kissa) : "") + sudBadge + "</b>" +
                     '<button type="button" onclick="deletePortalFeedback(' + idx + ');" style="background:#fee2e2;color:#991b1b;border:0;padding:2px 8px;border-radius:4px;cursor:pointer;font-size:10.5px;">Sil</button>' +
                 "</div>" + qaHtml + openHtml + "</div>";
         }).join("");
