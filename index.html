@@ -55742,6 +55742,7 @@ window.addEventListener('DOMContentLoaded', () => {
                 taleHtml = '<div style="background:#172554;border:1px solid #3b82f6;border-radius:12px;padding:12px;margin-bottom:12px;">' +
                     '<b style="font-size:12.5px;color:#93c5fd;display:block;margin-bottom:4px;">✍️ Kendi Kıssanı Yaz</b>' +
                     '<p style="margin:0 0 8px;font-size:10.5px;color:#bfdbfe;line-height:1.5;">Anlatı terapisi çalışması: kendi hikâyenizi 5 sahnede bir kıssa gibi yazın. Kahramandan bahsederken "ben" yerine "o" demeyi deneyin — mesafe, görüş netliği getirir.</p>' +
+                    '<button type="button" id="lala-tale-listen" style="background:#1d4ed8;color:#fff;border:0;padding:5px 12px;border-radius:6px;font-size:11px;font-weight:700;cursor:pointer;margin-bottom:8px;">🔊 Kıssamı Dinle</button>' +
                     TALE_SCENES.map(function (sc) {
                         return '<div style="background:rgba(0,0,0,.25);border-radius:8px;padding:8px 10px;margin-bottom:6px;">' +
                             '<b style="font-size:11px;color:#93c5fd;display:block;margin-bottom:4px;">' + sc[1] + '</b>' +
@@ -55756,7 +55757,8 @@ window.addEventListener('DOMContentLoaded', () => {
                     routeHtml +
                     '<b style="font-size:12.5px;color:#fbbf24;display:block;margin-bottom:6px;">📖 Bu Haftanın Kıssası</b>' +
                     '<b style="font-size:12.5px;color:#fde68a;display:block;">' + esc(kk.title) + '</b>' +
-                    '<div style="font-size:10.5px;color:#d97706;margin:2px 0 8px;">' + esc(kk.theme) + '</div>' +
+                    '<div style="font-size:10.5px;color:#d97706;margin:2px 0 8px;display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap;"><span>' + esc(kk.theme) + '</span>' +
+                    '<button type="button" id="lala-kissa-listen" style="background:#b45309;color:#fff;border:0;padding:5px 12px;border-radius:6px;font-size:11px;font-weight:700;cursor:pointer;">🔊 Kıssayı Dinle</button></div>' +
                     '<div style="background:rgba(0,0,0,.2);border-radius:8px;padding:8px 10px;margin-bottom:10px;">' +
                         '<b style="font-size:11px;color:#fbbf24;display:block;margin-bottom:4px;">📊 Okumadan önce sıkıntı düzeyiniz (0=hiç, 10=dayanılmaz): <span id="lala-sud-pre-val">' + (sud.pre !== null ? sud.pre : '—') + '</span></b>' +
                         '<input type="range" id="lala-sud-pre" min="0" max="10" step="1" value="' + (sud.pre !== null ? sud.pre : 5) + '" style="width:100%;accent-color:#f59e0b;cursor:pointer;">' +
@@ -55827,6 +55829,50 @@ window.addEventListener('DOMContentLoaded', () => {
                         try { localStorage.setItem(taleKey, JSON.stringify(tale)); } catch (err) {}
                     });
                 });
+            }
+            // Sesli dinleti (tarayıcının yerleşik Türkçe seslendirmesi, dosyasız)
+            function lalaSpeak(parts, btn, startLabel) {
+                if (!window.speechSynthesis) return;
+                if (window.speechSynthesis.speaking) {
+                    window.speechSynthesis.cancel();
+                    if (window.__lalaListenBtn) { window.__lalaListenBtn.textContent = window.__lalaListenLabel; window.__lalaListenBtn = null; }
+                    return;
+                }
+                var voice = null;
+                var voices = window.speechSynthesis.getVoices() || [];
+                for (var vi = 0; vi < voices.length; vi++) { if (voices[vi].lang && voices[vi].lang.toLowerCase().indexOf('tr') === 0) { voice = voices[vi]; break; } }
+                function reset() { btn.textContent = startLabel; if (window.__lalaListenBtn === btn) window.__lalaListenBtn = null; }
+                parts.forEach(function (p, idx) {
+                    var u = new SpeechSynthesisUtterance(p);
+                    u.lang = 'tr-TR'; u.rate = 0.95;
+                    if (voice) u.voice = voice;
+                    if (idx === parts.length - 1) { u.onend = reset; u.onerror = reset; }
+                    window.speechSynthesis.speak(u);
+                });
+                window.__lalaListenBtn = btn; window.__lalaListenLabel = startLabel;
+                btn.textContent = '⏹️ Durdur';
+            }
+            var listenBtn = document.getElementById('lala-kissa-listen');
+            if (listenBtn) {
+                if (window.speechSynthesis) {
+                    listenBtn.addEventListener('click', function () {
+                        lalaSpeak([kk.title + '.', kk.theme + '.', kk.wisdom, 'Birinci soru. ' + kk.q1, 'İkinci soru. ' + kk.q2, 'Üçüncü soru. ' + kk.q3], listenBtn, '🔊 Kıssayı Dinle');
+                    });
+                } else { listenBtn.style.display = 'none'; }
+            }
+            var taleBtn = document.getElementById('lala-tale-listen');
+            if (taleBtn) {
+                if (window.speechSynthesis) {
+                    taleBtn.addEventListener('click', function () {
+                        var parts = [];
+                        TALE_SCENES.forEach(function (sc) {
+                            var v = (tale[sc[0]] || '').trim();
+                            if (v) parts.push(sc[1] + '. ' + v);
+                        });
+                        if (!parts.length) { alert('Önce birkaç sahne yazın; sonra kıssanızı dinleyebilirsiniz.'); return; }
+                        lalaSpeak(parts, taleBtn, '🔊 Kıssamı Dinle');
+                    });
+                } else { taleBtn.style.display = 'none'; }
             }
             document.getElementById('lala-portal-summary').addEventListener('click', function () {
                 var lines = (payload.t || []).map(function (t, i) { return (state[i] ? '✅' : '⬜') + ' ' + t; }).join('\n');
