@@ -44886,6 +44886,10 @@ document.addEventListener('click', e => {
           <input type="checkbox" id="portal-edit-atolye" onchange="LalaPortal.syncFromEditor();" style="transform:scale(1.2);">
           <span>✍️ "Kendi Kıssanı Yaz" atölyesi portalda açık olsun (5 sahnede anlatı terapisi)</span>
         </label>
+        <label style="display:flex;align-items:center;gap:8px;background:#0f172a;border:1px solid #334155;border-radius:6px;padding:8px;cursor:pointer;">
+          <input type="checkbox" id="portal-edit-duo" onchange="LalaPortal.syncFromEditor();" style="transform:scale(1.2);">
+          <span>👥 Çift/aile perspektif bölümü açık olsun (herkes kendini kıssada hangi karakterde görüyor?)</span>
+        </label>
         <div id="portal-edit-kissa-row" style="display:none;background:#0f172a;border:1px dashed #b45309;border-radius:6px;padding:6px 8px;font-size:11.5px;color:#fde68a;">
           📖 Kıssa kartı: <b id="portal-edit-kissa-name"></b>
           <button type="button" onclick="LalaPortal.clearKissa();" style="float:right;background:transparent;border:0;color:#fca5a5;cursor:pointer;font-size:11px;font-weight:700;">Kaldır ✕</button>
@@ -55577,7 +55581,7 @@ window.addEventListener('DOMContentLoaded', () => {
             return decodeURIComponent(escape(atob(s)));
         }
         function payloadFrom(name, d) {
-            return { n: name, t: d.tasks && d.tasks.length ? d.tasks : DEFAULT_TASKS, a: d.appt || '', c: d.crisis || DEFAULT_CRISIS, k: d.kissa || '', r: d.route || '', w: d.atolye ? 1 : '' };
+            return { n: name, t: d.tasks && d.tasks.length ? d.tasks : DEFAULT_TASKS, a: d.appt || '', c: d.crisis || DEFAULT_CRISIS, k: d.kissa || '', r: d.route || '', w: d.atolye ? 1 : '', d: d.duo ? 1 : '' };
         }
         function buildLink(payload) {
             return location.origin + location.pathname + '#portal=' + b64urlEncode(JSON.stringify(payload));
@@ -55602,6 +55606,8 @@ window.addEventListener('DOMContentLoaded', () => {
             document.getElementById('portal-edit-crisis').value = d.crisis || DEFAULT_CRISIS;
             var atc = document.getElementById('portal-edit-atolye');
             if (atc) atc.checked = !!d.atolye;
+            var duc = document.getElementById('portal-edit-duo');
+            if (duc) duc.checked = !!d.duo;
             var krow = document.getElementById('portal-edit-kissa-row');
             var kname = document.getElementById('portal-edit-kissa-name');
             var kcur = d.kissa && window.LalaKissalar ? window.LalaKissalar[d.kissa] : null;
@@ -55623,7 +55629,8 @@ window.addEventListener('DOMContentLoaded', () => {
                 crisis: document.getElementById('portal-edit-crisis').value.trim(),
                 kissa: prev.kissa || '',
                 route: prev.route || '',
-                atolye: (document.getElementById('portal-edit-atolye') && document.getElementById('portal-edit-atolye').checked) ? 1 : 0
+                atolye: (document.getElementById('portal-edit-atolye') && document.getElementById('portal-edit-atolye').checked) ? 1 : 0,
+                duo: (document.getElementById('portal-edit-duo') && document.getElementById('portal-edit-duo').checked) ? 1 : 0
             };
         }
         function renderPreview() {
@@ -55751,6 +55758,35 @@ window.addEventListener('DOMContentLoaded', () => {
                     }).join('') +
                     '<div style="font-size:10px;color:#64748b;">Yazdıklarınız yalnızca bu cihazda saklanır; özet düğmesiyle koçunuza iletilir.</div></div>';
             }
+            var duoKey = (kk && payload.d) ? ('lala_portal_duo_' + b64urlEncode(payload.n + '|' + payload.k)) : null;
+            var duo = { p1: { name: '', char: '', note: '' }, p2: { name: '', char: '', note: '' } };
+            if (duoKey) {
+                try {
+                    var dd = JSON.parse(localStorage.getItem(duoKey));
+                    if (dd && dd.p1) { duo.p1 = { name: dd.p1.name || '', char: dd.p1.char || '', note: dd.p1.note || '' }; }
+                    if (dd && dd.p2) { duo.p2 = { name: dd.p2.name || '', char: dd.p2.char || '', note: dd.p2.note || '' }; }
+                } catch (e) {}
+            }
+            var duoChars = (kk && window.KissaCharacters && window.KissaCharacters[payload.k]) || ['Kahraman', 'İzleyen'];
+            var duoHtml = '';
+            if (kk && payload.d) {
+                var duoPersonHtml = function (pid, label) {
+                    var p = duo[pid];
+                    var chips = duoChars.map(function (c, ci) {
+                        var on = p.char === c;
+                        return '<button type="button" data-duo-char="' + pid + '" data-ci="' + ci + '" style="background:' + (on ? '#b45309' : 'rgba(0,0,0,.3)') + ';color:' + (on ? '#fff' : '#fde68a') + ';border:1px solid ' + (on ? '#b45309' : '#92610a') + ';padding:4px 8px;border-radius:12px;font-size:10px;font-weight:600;cursor:pointer;margin:0 4px 4px 0;">' + esc(c) + '</button>';
+                    }).join('');
+                    return '<div style="background:rgba(0,0,0,.25);border-radius:8px;padding:8px 10px;margin-bottom:8px;">' +
+                        '<b style="font-size:11px;color:#fbbf24;display:block;margin-bottom:4px;">' + label + '</b>' +
+                        '<input type="text" data-duo-name="' + pid + '" value="' + esc(p.name) + '" placeholder="İsmi (örn. Ayşe)" style="width:100%;box-sizing:border-box;background:rgba(0,0,0,.35);border:1px solid #92610a;border-radius:6px;padding:5px 8px;font-size:11px;color:#fde68a;margin-bottom:6px;">' +
+                        '<div style="font-size:10px;color:#d97706;margin-bottom:4px;">Kendini kıssada hangi karakterde görüyorsun?</div>' + chips +
+                        '<textarea data-duo-note="' + pid + '" rows="2" placeholder="Bu karakterde kendimi şöyle görüyorum..." style="width:100%;box-sizing:border-box;margin-top:4px;background:rgba(0,0,0,.35);border:1px solid #92610a;border-radius:6px;padding:6px 8px;font-size:11px;color:#fde68a;resize:vertical;font-family:inherit;">' + esc(p.note) + '</textarea></div>';
+                };
+                duoHtml = '<div style="border-top:1px dashed #92610a;margin-top:10px;padding-top:10px;">' +
+                    '<b style="font-size:11.5px;color:#fbbf24;display:block;margin-bottom:4px;">👥 İki Perspektif (çift/aile çalışması)</b>' +
+                    '<div style="font-size:10px;color:#d97706;margin-bottom:6px;">Aynı kıssayı birlikte okuyun; herkes kendini gördüğü karakteri işaretlesin. Farklı seçimler seansta konuşulacak en kıymetli malzemedir.</div>' +
+                    duoPersonHtml('p1', '👤 1. Kişi') + duoPersonHtml('p2', '👤 2. Kişi') + '</div>';
+            }
             var kissaHtml = '';
             if (kk) {
                 kissaHtml = '<div style="background:#3b2f0b;border:1px solid #b45309;border-radius:12px;padding:12px;margin-bottom:12px;">' +
@@ -55770,6 +55806,7 @@ window.addEventListener('DOMContentLoaded', () => {
                         '<b style="font-size:11px;color:#fbbf24;display:block;margin-bottom:4px;">📊 Çalışmayı bitirirken sıkıntı düzeyiniz: <span id="lala-sud-post-val">' + (sud.post !== null ? sud.post : '—') + '</span></b>' +
                         '<input type="range" id="lala-sud-post" min="0" max="10" step="1" value="' + (sud.post !== null ? sud.post : 5) + '" style="width:100%;accent-color:#f59e0b;cursor:pointer;">' +
                     '</div>' +
+                    duoHtml +
                     '<div style="font-size:10px;color:#a16207;margin-top:4px;">Yanıtlarınız ve puanlarınız yalnızca bu cihazda saklanır; hazır olunca aşağıdaki özet düğmesiyle koçunuza iletebilirsiniz.</div></div>';
             }
             host.innerHTML =
@@ -55819,6 +55856,34 @@ window.addEventListener('DOMContentLoaded', () => {
                         sud[kind] = +slider.value;
                         if (label) label.textContent = slider.value;
                         try { localStorage.setItem(sudKey, JSON.stringify(sud)); } catch (err) {}
+                    });
+                });
+            }
+            if (duoKey) {
+                host.querySelectorAll('[data-duo-name]').forEach(function (inp) {
+                    inp.addEventListener('input', function () {
+                        duo[inp.dataset.duoName].name = inp.value;
+                        try { localStorage.setItem(duoKey, JSON.stringify(duo)); } catch (err) {}
+                    });
+                });
+                host.querySelectorAll('[data-duo-note]').forEach(function (ta) {
+                    ta.addEventListener('input', function () {
+                        duo[ta.dataset.duoNote].note = ta.value;
+                        try { localStorage.setItem(duoKey, JSON.stringify(duo)); } catch (err) {}
+                    });
+                });
+                host.querySelectorAll('[data-duo-char]').forEach(function (btn) {
+                    btn.addEventListener('click', function () {
+                        var pid = btn.dataset.duoChar;
+                        var c = duoChars[+btn.dataset.ci];
+                        duo[pid].char = c;
+                        host.querySelectorAll('[data-duo-char="' + pid + '"]').forEach(function (b) {
+                            var on = duoChars[+b.dataset.ci] === c;
+                            b.style.background = on ? '#b45309' : 'rgba(0,0,0,.3)';
+                            b.style.color = on ? '#fff' : '#fde68a';
+                            b.style.borderColor = on ? '#b45309' : '#92610a';
+                        });
+                        try { localStorage.setItem(duoKey, JSON.stringify(duo)); } catch (err) {}
                     });
                 });
             }
@@ -55887,6 +55952,15 @@ window.addEventListener('DOMContentLoaded', () => {
                     });
                     if (!anyAns) msg += ' (henüz yanıt yazılmadı)';
                     if (sud.pre !== null || sud.post !== null) msg += '\n\n📊 Sıkıntı puanı (0-10): önce ' + (sud.pre !== null ? sud.pre : '—') + ' → sonra ' + (sud.post !== null ? sud.post : '—');
+                    if (payload.d) {
+                        var duoLines = '';
+                        [duo.p1, duo.p2].forEach(function (p) {
+                            if ((p.name || '').trim() && ((p.char || '').trim() || (p.note || '').trim())) {
+                                duoLines += '\n👤 ' + p.name.trim() + ' — Karakter: ' + (p.char || '—') + '\nNot: ' + (p.note || '—');
+                            }
+                        });
+                        if (duoLines) msg += '\n\n👥 İki Perspektif:' + duoLines;
+                    }
                 }
                 if (payload.w) {
                     var anyScene = false, sceneTxt = '';
@@ -55964,6 +56038,25 @@ window.addEventListener('DOMContentLoaded', () => {
                 }
             });
 
+            var duo = [];
+            var curPerson = null;
+            lines.forEach(function (l) {
+                var t = l.trim();
+                if (!t) { curPerson = null; return; }
+                if (t.indexOf('👤') === 0) {
+                    var pm = t.match(/^👤\s*(.+?)\s*—\s*Karakter:\s*(.+)$/);
+                    if (pm) { curPerson = { name: pm[1].trim(), char: pm[2].trim(), note: '' }; duo.push(curPerson); }
+                    return;
+                }
+                if (curPerson && t.indexOf('Not:') === 0) {
+                    curPerson.note = t.slice(4).trim();
+                    return;
+                }
+                if (curPerson && curPerson.note) {
+                    curPerson.note += ' ' + t;
+                }
+            });
+
             var routeRes = null;
             if (window.kissaRouteAdvanceFromImport && kissaTitle) {
                 try { routeRes = window.kissaRouteAdvanceFromImport(name, kissaTitle); } catch (re) {}
@@ -56009,7 +56102,7 @@ window.addEventListener('DOMContentLoaded', () => {
                 var fbKey = 'lalalik_portal_feedback__' + name;
                 var fbList = [];
                 try { fbList = JSON.parse(localStorage.getItem(fbKey) || '[]'); if (!Array.isArray(fbList)) fbList = []; } catch (fe) { fbList = []; }
-                fbList.unshift({ date: new Date().toISOString(), done: done, total: total, kissa: kissaTitle, qa: qa, doneTasks: doneTasks, openTasks: openTasks, sudPre: sudPre, sudPost: sudPost, tale: Object.keys(tale).length ? tale : null });
+                fbList.unshift({ date: new Date().toISOString(), done: done, total: total, kissa: kissaTitle, qa: qa, doneTasks: doneTasks, openTasks: openTasks, sudPre: sudPre, sudPost: sudPost, tale: Object.keys(tale).length ? tale : null, duo: duo.length ? duo : null });
                 localStorage.setItem(fbKey, JSON.stringify(fbList));
 
                 var tbody = document.getElementById('crm-records-tbody');
@@ -56044,6 +56137,13 @@ window.addEventListener('DOMContentLoaded', () => {
                 }).join('') + '</div>';
             }
 
+            var duoHtmlR = '';
+            if (duo.length) {
+                duoHtmlR = '<div style="margin-top:6px;"><b style="color:#c4b5fd;">👥 İki Perspektif:</b>' + duo.map(function (p) {
+                    return '<div style="background:#0f172a;border-radius:6px;padding:6px 8px;margin-top:4px;"><b style="color:#c4b5fd;">👤 ' + esc(p.name) + '</b> <span style="color:#a78bfa;">(' + esc(p.char) + ')</span><br><span style="color:#ddd6fe;">' + esc(p.note || '—') + '</span></div>';
+                }).join('') + '</div>';
+            }
+
             var qaHtml = qa.length
                     ? '<div style="margin-top:6px;">' + qa.map(function (x) {
                         return '<div style="background:#0f172a;border-radius:6px;padding:6px 8px;margin-bottom:4px;"><b style="color:#fbbf24;">' + esc(x.n) + ') ' + esc(x.q) + '</b><br><span style="color:#a7f3d0;">→ ' + esc(x.a || '(yanıt yok)') + '</span></div>';
@@ -56052,7 +56152,7 @@ window.addEventListener('DOMContentLoaded', () => {
                 res.style.display = 'block';
                 res.innerHTML = '<span style="color:#4ade80;">✅ <b>' + esc(name) + '</b> dosyasına işlendi:</span> ' +
                     esc(done + '/' + total) + ' egzersiz tamam' + (kissaTitle ? ' · 📖 ' + esc(kissaTitle) : '') +
-                    (openTasks.length ? '<br><span style="color:#fbbf24;">Açık kalan: ' + esc(openTasks.join('; ')) + '</span>' : '') + qaHtml + routeHtml + sudHtml + taleHtml;
+                    (openTasks.length ? '<br><span style="color:#fbbf24;">Açık kalan: ' + esc(openTasks.join('; ')) + '</span>' : '') + qaHtml + routeHtml + sudHtml + taleHtml + duoHtmlR;
                 ta.value = '';
                 if (window.renderPortalHistory) window.renderPortalHistory();
                 if (window.showToast) showToast('Özet ' + name + ' dosyasına işlendi!', 'success');
@@ -59113,6 +59213,24 @@ window.addEventListener('DOMContentLoaded', () => {
     };
     window.KissaRoutes = KISSA_ROUTES;
 
+    // Çift/aile çalışması: her kıssanın aynalanabilir karakterleri
+    var KISSA_CHARACTERS = {
+        "yusuf":      ["Yusuf (kuyuya atılan)", "Kardeşler (kıskanan)", "Züleyha (sınayan)", "Zindan arkadaşları (umut taşıyan)"],
+        "yunus":      ["Yunus (kaçan)", "Gemidekiler (tanık olan)", "Balık (dönüştüren karanlık)"],
+        "musa_hizir": ["Musa (soran)", "Hızır (bilen)", "Gemi sahibi (kaybeden gibi görünen)"],
+        "ibrahim":    ["İbrahim (ateşe yürüyen)", "Nemrut (baskılayan)", "Ateş (dönüşen korku)"],
+        "eyyub":      ["Eyüp (dayanan)", "Eşi (yorgun düşen)", "Dostlar (akıl veren)"],
+        "meryem":     ["Meryem (suskun üreten)", "Toplum (yargılayan)", "Hurma dalı (küçük mucize)"],
+        "ney":        ["Ney (feryat eden)", "Kamışlık (bırakılan kök)", "Dinleyen (hikâyeyi duyan)"],
+        "fil":        ["Kulağı tutan (tek parça)", "Bacağı tutan (başka parça)", "Fil (büyük hakikat)", "Mum getiren (aydınlatan)"],
+        "papagan":    ["Papağan (yansıtan)", "Bakkal (kendi izini görmeyen)", "Kel derviş (aynalanan)"],
+        "simurg":     ["Hüthüt (yol gösteren)", "Bahane kuşları (dökülen)", "Otuz kuş (varan)"],
+        "nasreddin":  ["Hoca (deneyen)", "Köylüler (izleyen/gülen)", "Göl (büyük hedef)"],
+        "taptuk":     ["Yunus (odun taşıyan)", "Taptuk Emre (standart koyan)", "Eğri odun (küçük taviz)"],
+        "kehf":       ["Gençler (çekilen)", "Kıtmir (sadık yoldaş)", "Zalim düzen (baskı)"]
+    };
+    window.KissaCharacters = KISSA_CHARACTERS;
+
     function kissaRouteKey(client) { return "lalalik_kissa_route__" + client; }
     function kissaRouteGet(client) { try { return JSON.parse(localStorage.getItem(kissaRouteKey(client)) || "null"); } catch (e) { return null; } }
     function kissaRouteSave(client, rt) { try { localStorage.setItem(kissaRouteKey(client), JSON.stringify(rt)); } catch (e) {} }
@@ -59498,15 +59616,22 @@ window.addEventListener('DOMContentLoaded', () => {
                     }).join('') + '</div>';
                 }
             }
+            var duoBadge = (it.duo && it.duo.length) ? ' <span style="color:#6d28d9;font-weight:700;">👥</span>' : '';
+            var duoBlock = '';
+            if (it.duo && it.duo.length) {
+                duoBlock = '<div style="margin-top:6px;display:flex;flex-direction:column;gap:4px;">' + it.duo.map(function (p) {
+                    return '<div style="background:#f5f3ff;border:1px solid #ddd6fe;border-radius:6px;padding:6px 8px;"><b style="color:#6d28d9;">👤 ' + esc(p.name) + '</b> <span style="color:#7c3aed;">(' + esc(p.char) + ')</span><br><span style="color:#4c1d95;">' + esc(p.note || '—') + '</span></div>';
+                }).join('') + '</div>';
+            }
             var qaHtml = (it.qa && it.qa.length) ? '<div style="margin-top:6px;display:flex;flex-direction:column;gap:4px;">' + it.qa.map(function (x) {
                 return '<div style="background:#fff;border:1px solid #e0f2fe;border-radius:6px;padding:6px 8px;"><b style="color:#0369a1;">' + esc(x.n) + ") " + esc(x.q) + '</b><br><span style="color:#166534;">→ ' + esc(x.a || "(yanıt yok)") + "</span></div>";
             }).join("") + "</div>" : "";
             var openHtml = (it.openTasks && it.openTasks.length) ? '<div style="margin-top:4px;font-size:10.5px;color:#b45309;">Açık kalan: ' + esc(it.openTasks.join("; ")) + "</div>" : "";
             return '<div style="background:#ffffff;border:1px solid #bae6fd;border-radius:8px;padding:10px;">' +
                 '<div style="display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap;">' +
-                    '<b style="color:#0c4a6e;font-size:11.5px;">🌿 ' + esc(dt) + " · " + esc(String(it.done)) + "/" + esc(String(it.total)) + " egzersiz tamam" + (it.kissa ? " · 📖 " + esc(it.kissa) : "") + sudBadge + taleBadge + "</b>" +
+                    '<b style="color:#0c4a6e;font-size:11.5px;">🌿 ' + esc(dt) + " · " + esc(String(it.done)) + "/" + esc(String(it.total)) + " egzersiz tamam" + (it.kissa ? " · 📖 " + esc(it.kissa) : "") + sudBadge + taleBadge + duoBadge + "</b>" +
                     '<button type="button" onclick="deletePortalFeedback(' + idx + ');" style="background:#fee2e2;color:#991b1b;border:0;padding:2px 8px;border-radius:4px;cursor:pointer;font-size:10.5px;">Sil</button>' +
-                "</div>" + qaHtml + taleBlock + openHtml + "</div>";
+                "</div>" + qaHtml + taleBlock + duoBlock + openHtml + "</div>";
         }).join("");
     };
 
