@@ -55667,6 +55667,14 @@ window.addEventListener('DOMContentLoaded', () => {
                     '<input type="checkbox" data-i="' + i + '"' + checked + ' style="transform:scale(1.2);"><span>' + esc(t) + '</span></label>';
             }).join('');
             var kk = payload.k && window.LalaKissalar ? window.LalaKissalar[payload.k] : null;
+            var kissaAnsKey = kk ? ('lala_portal_kissa_' + b64urlEncode(payload.n + '|' + payload.k)) : null;
+            var kissaAns = ['', '', ''];
+            if (kissaAnsKey) {
+                try {
+                    var ka = JSON.parse(localStorage.getItem(kissaAnsKey));
+                    if (Array.isArray(ka)) kissaAns = [ka[0] || '', ka[1] || '', ka[2] || ''];
+                } catch (e) {}
+            }
             var kissaHtml = '';
             if (kk) {
                 kissaHtml = '<div style="background:#3b2f0b;border:1px solid #b45309;border-radius:12px;padding:12px;margin-bottom:12px;">' +
@@ -55674,9 +55682,9 @@ window.addEventListener('DOMContentLoaded', () => {
                     '<b style="font-size:12.5px;color:#fde68a;display:block;">' + esc(kk.title) + '</b>' +
                     '<div style="font-size:10.5px;color:#d97706;margin:2px 0 8px;">' + esc(kk.theme) + '</div>' +
                     '<p style="margin:0 0 10px;font-size:11.5px;color:#fef3c7;line-height:1.55;">' + esc(kk.wisdom) + '</p>' +
-                    '<b style="font-size:11px;color:#fbbf24;display:block;margin-bottom:6px;">💭 Üzerine düşünebileceğiniz 3 soru:</b>' +
-                    [kk.q1, kk.q2, kk.q3].map(function (q, i) { return '<div style="background:rgba(0,0,0,.25);border-radius:8px;padding:8px 10px;margin-bottom:6px;font-size:11.5px;color:#fde68a;line-height:1.5;"><b>' + (i + 1) + '.</b> ' + esc(q) + '</div>'; }).join('') +
-                    '<div style="font-size:10px;color:#a16207;margin-top:4px;">Yanıtlarınızı not alıp seansta koçunuzla paylaşabilirsiniz.</div></div>';
+                    '<b style="font-size:11px;color:#fbbf24;display:block;margin-bottom:6px;">💭 Üzerine düşünün ve yanıtınızı yazın:</b>' +
+                    [kk.q1, kk.q2, kk.q3].map(function (q, i) { return '<div style="background:rgba(0,0,0,.25);border-radius:8px;padding:8px 10px;margin-bottom:6px;font-size:11.5px;color:#fde68a;line-height:1.5;"><b>' + (i + 1) + '.</b> ' + esc(q) + '<textarea data-ki="' + i + '" rows="2" placeholder="Düşünceleriniz..." style="width:100%;box-sizing:border-box;margin-top:6px;background:rgba(0,0,0,.35);border:1px solid #92610a;border-radius:6px;padding:6px 8px;font-size:11.5px;color:#fde68a;resize:vertical;font-family:inherit;">' + esc(kissaAns[i]) + '</textarea></div>'; }).join('') +
+                    '<div style="font-size:10px;color:#a16207;margin-top:4px;">Yanıtlarınız yalnızca bu cihazda saklanır; hazır olunca aşağıdaki özet düğmesiyle koçunuza iletebilirsiniz.</div></div>';
             }
             host.innerHTML =
                 '<div style="max-width:440px;margin:0 auto;padding:20px 16px 40px;color:#f8fafc;">' +
@@ -55707,10 +55715,27 @@ window.addEventListener('DOMContentLoaded', () => {
                 lbl.style.textDecoration = cb.checked ? 'line-through' : 'none';
                 lbl.style.opacity = cb.checked ? '.6' : '1';
             });
+            if (kk && kissaAnsKey) {
+                host.querySelectorAll('textarea[data-ki]').forEach(function (ta) {
+                    ta.addEventListener('input', function () {
+                        kissaAns[+ta.dataset.ki] = ta.value;
+                        try { localStorage.setItem(kissaAnsKey, JSON.stringify(kissaAns)); } catch (err) {}
+                    });
+                });
+            }
             document.getElementById('lala-portal-summary').addEventListener('click', function () {
                 var lines = (payload.t || []).map(function (t, i) { return (state[i] ? '✅' : '⬜') + ' ' + t; }).join('\n');
                 var doneCount = (payload.t || []).filter(function (t, i) { return state[i]; }).length;
                 var msg = '🌿 Haftalık Portal Özeti — ' + payload.n + '\nTamamlanan: ' + doneCount + '/' + (payload.t || []).length + '\n' + lines;
+                if (kk) {
+                    msg += '\n\n📖 Kıssa Çalışması: ' + kk.title;
+                    var anyAns = false;
+                    [kk.q1, kk.q2, kk.q3].forEach(function (q, i) {
+                        var ans = (kissaAns[i] || '').trim();
+                        if (ans) { anyAns = true; msg += '\n\n' + (i + 1) + ') ' + q + '\n→ ' + ans; }
+                    });
+                    if (!anyAns) msg += ' (henüz yanıt yazılmadı)';
+                }
                 if (navigator.clipboard && navigator.clipboard.writeText) {
                     navigator.clipboard.writeText(msg).then(function () { alert('Özet kopyalandı; WhatsApp\'a yapıştırıp koçunuza gönderebilirsiniz.'); });
                 } else { prompt('Kopyalayın:', msg); }
