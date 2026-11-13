@@ -4262,6 +4262,82 @@ html:not(.portal-mode) #lala-portal-view { display: none; }
     })();
     </script>
 
+    <!-- BAĞLAMSAL KART VURGUSU: danışan verisine göre ilgili araç kartını parlat -->
+    <style>
+    #pano-tools-cards .card { position:relative; }
+    #pano-tools-cards .card.ctx-hi {
+        box-shadow: 0 0 0 2.5px #e9c46a, 0 8px 18px rgba(233,196,106,.22) !important;
+        border-color: #e9c46a !important;
+    }
+    .ctx-badge {
+        position:absolute; top:-9px; right:10px; z-index:2;
+        background:#fef3c7; border:1px solid #e9c46a; color:#854d0e;
+        border-radius:99px; padding:1px 8px; font-size:10px; font-weight:800;
+        box-shadow:0 1px 4px rgba(0,0,0,.12); pointer-events:auto; cursor:help;
+    }
+    </style>
+    <script>
+    /* Bağlamsal öneri: aktif danışanın verisi hangi araca işaret ediyorsa o kart altın çerçeve alır */
+    (function () {
+        var RULES = [
+            { match: 'Gottman Yumuşak', reason: 'Çift/aile perspektif çalışması aktif — Gottman simülatörü seansta işe yarar', when: function (c) { return c.hasDuo; } },
+            { match: '360°', reason: 'Son özetle SUD düşüşü geldi — iyileşmeyi trend grafiğinde gösterin', when: function (c) { return c.sudDrop; } },
+            { match: 'Mini CRM', reason: 'Açık kalan egzersizler var — dosyadan takip edin', when: function (c) { return c.openTasks; } },
+            { match: 'Cep Portalı', reason: 'Kıssa rotası sürüyor — sıradaki haftayı portala gönderin', when: function (c) { return c.hasRoute; } }
+        ];
+        function compute() {
+            var ctx = { hasDuo: false, sudDrop: false, openTasks: false, hasRoute: false };
+            var sel = document.getElementById('global-active-client-select');
+            var name = (sel && sel.value && sel.value !== '__NEW__') ? sel.value : '';
+            if (!name) return ctx;
+            var portal = {};
+            try { portal = JSON.parse(localStorage.getItem('lala_portal__' + name)) || {}; } catch (e) {}
+            var fb = [];
+            try { fb = JSON.parse(localStorage.getItem('lalalik_portal_feedback__' + name)) || []; } catch (e) {}
+            var last = fb.length ? fb[0] : null;
+            ctx.hasRoute = !!(portal.route && portal.route.t);
+            ctx.hasDuo = !!portal.duo || !!(last && last.duo && last.duo.length);
+            if (last) {
+                if (typeof last.sudPre === 'number' && typeof last.sudPost === 'number' && last.sudPost < last.sudPre) ctx.sudDrop = true;
+                if ((last.openTasks && last.openTasks.length) || (parseInt(last.done, 10) < parseInt(last.total, 10))) ctx.openTasks = true;
+            }
+            return ctx;
+        }
+        function apply() {
+            var box = document.getElementById('pano-tools-cards');
+            if (!box) return;
+            var cards = Array.prototype.slice.call(box.querySelectorAll('.card'));
+            cards.forEach(function (c) {
+                c.classList.remove('ctx-hi');
+                var old = c.querySelector('.ctx-badge'); if (old) old.remove();
+            });
+            var ctx = compute();
+            RULES.forEach(function (r) {
+                if (!r.when(ctx)) return;
+                for (var i = 0; i < cards.length; i++) {
+                    if ((cards[i].textContent || '').indexOf(r.match) !== -1) {
+                        cards[i].classList.add('ctx-hi');
+                        var b = document.createElement('span');
+                        b.className = 'ctx-badge'; b.textContent = '✨ Önerilir'; b.title = r.reason;
+                        cards[i].appendChild(b);
+                        break;
+                    }
+                }
+            });
+        }
+        function init() {
+            var sel = document.getElementById('global-active-client-select');
+            if (sel) sel.addEventListener('change', apply);
+            window.addEventListener('storage', apply);
+            window.addEventListener('focus', apply);
+            apply();
+        }
+        if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init);
+        else init();
+        window.__panoCtxApply = apply;
+    })();
+    </script>
+
     <!-- YENİ İNTERAKTİF ARAÇLAR VE SİMÜLATÖRLER -->
     <style>
     .pano-grp-bar { display:flex; flex-wrap:wrap; gap:6px; margin:16px 0 2px; align-items:center; }
