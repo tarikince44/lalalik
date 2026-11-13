@@ -4194,6 +4194,74 @@ html:not(.portal-mode) #lala-portal-view { display: none; }
         </div>
     </section>
 
+    <!-- BUGÜN ŞERİDİ: aktif danışanın gün içi özeti -->
+    <div id="pano-today-strip" style="display:none;margin-top:14px;background:linear-gradient(135deg,#0f766e,#115e59);border:1px solid rgba(255,255,255,.15);border-radius:12px;padding:12px 16px;color:#fff;align-items:center;gap:10px 18px;flex-wrap:wrap;font-size:12.5px;line-height:1.4;"></div>
+    <script>
+    /* Bugün şeridi: aktif danışan + seans + ödev + SUD + rota özeti; veri değişince tazelenir */
+    (function () {
+        function esc(s) { return String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;'); }
+        function fmtAppt(iso) {
+            if (!iso) return '—';
+            try {
+                var dt = new Date(iso);
+                if (isNaN(dt.getTime())) return iso;
+                return dt.toLocaleDateString('tr-TR', { day: 'numeric', month: 'long', weekday: 'short' }) + ' ' +
+                       dt.toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' });
+            } catch (e) { return iso; }
+        }
+        function fmtDay(iso) {
+            try { return new Date(iso).toLocaleDateString('tr-TR', { day: 'numeric', month: 'short' }); } catch (e) { return ''; }
+        }
+        function render() {
+            var el = document.getElementById('pano-today-strip');
+            if (!el) return;
+            var sel = document.getElementById('global-active-client-select');
+            var name = (sel && sel.value && sel.value !== '__NEW__') ? sel.value : '';
+            if (!name) { el.style.display = 'none'; return; }
+            var portal = {};
+            try { portal = JSON.parse(localStorage.getItem('lala_portal__' + name)) || {}; } catch (e) {}
+            var fb = [];
+            try { fb = JSON.parse(localStorage.getItem('lalalik_portal_feedback__' + name)) || []; } catch (e) {}
+            var last = fb.length ? fb[0] : null;
+            var parts = [];
+            parts.push('<span style="font-weight:800;font-size:14px;">👤 ' + esc(name) + '</span>');
+            if (portal.appt) parts.push('<span>🗓️ ' + esc(fmtAppt(portal.appt)) + '</span>');
+            if (last) {
+                var hw = '✅ Ödev: ' + esc(last.done) + '/' + esc(last.total) + ' <span style="opacity:.7;">(' + esc(fmtDay(last.date)) + ')</span>';
+                parts.push('<span>' + hw + '</span>');
+                if (typeof last.sudPre === 'number' && typeof last.sudPost === 'number') {
+                    var d = last.sudPost - last.sudPre;
+                    var arrow = d < 0 ? '<b style="color:#86efac;">↓' + Math.abs(d) + '</b>' : (d > 0 ? '<b style="color:#fca5a5;">↑' + d + '</b>' : '<b style="color:#fde68a;">0</b>');
+                    parts.push('<span>📊 SUD: ' + last.sudPre + ' → ' + last.sudPost + ' ' + arrow + '</span>');
+                }
+            } else {
+                parts.push('<span style="opacity:.75;">✅ Henüz danışan özeti gelmedi</span>');
+            }
+            if (portal.kissa && window.LalaKissalar && window.LalaKissalar[portal.kissa]) {
+                var kt = window.LalaKissalar[portal.kissa].title;
+                if (portal.route && portal.route.t) kt = '🛤️ ' + portal.route.t + ' · Hafta ' + (portal.route.s + 1) + '/' + portal.route.n + ' — ' + kt;
+                else kt = '📖 ' + kt;
+                parts.push('<span>' + esc(kt) + '</span>');
+            }
+            parts.push('<span style="margin-left:auto;display:flex;gap:6px;">' +
+                '<button type="button" onclick="openClientPortalModal();" style="background:rgba(255,255,255,.16);border:1px solid rgba(255,255,255,.4);color:#fff;padding:4px 11px;border-radius:99px;font:inherit;font-size:11.5px;font-weight:700;cursor:pointer;">📲 Portal</button>' +
+                '<button type="button" onclick="document.getElementById(\'crm-modal\').style.display=\'flex\';" style="background:rgba(255,255,255,.16);border:1px solid rgba(255,255,255,.4);color:#fff;padding:4px 11px;border-radius:99px;font:inherit;font-size:11.5px;font-weight:700;cursor:pointer;">🗂️ Dosya</button></span>');
+            el.innerHTML = parts.join('');
+            el.style.display = 'flex';
+        }
+        function init() {
+            var sel = document.getElementById('global-active-client-select');
+            if (sel) sel.addEventListener('change', render);
+            window.addEventListener('storage', render);
+            window.addEventListener('focus', render);
+            render();
+        }
+        if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init);
+        else init();
+        window.__panoTodayRender = render;
+    })();
+    </script>
+
     <!-- YENİ İNTERAKTİF ARAÇLAR VE SİMÜLATÖRLER -->
     <style>
     .pano-grp-bar { display:flex; flex-wrap:wrap; gap:6px; margin:16px 0 2px; align-items:center; }
