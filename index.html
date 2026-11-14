@@ -37569,6 +37569,8 @@ ightarrow$ 🟣 Bilinmeyen)</span>
         if (it.gundem) rows += `<div style="margin-top:3px;"><b>Gündem:</b> ${esc(it.gundem)}</div>`;
         if (it.adim) rows += `<div><b>Mikro-adım:</b> ${esc(it.adim)}</div>`;
         if (it.lalaNot) rows += `<div><b>Koç Notu:</b> ${esc(it.lalaNot)}</div>`;
+        if (it.triyaj) rows += `<div style="color:#6d28d9;"><b>&#9873; Triyaj:</b> ${esc(it.triyaj)}</div>`;
+        if (it.hizmet) rows += `<div style="color:#1e40af;"><b>&#129513; Hizmet:</b> ${esc(it.hizmet)}</div>`;
         detay.innerHTML = `
             <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;">
                 <b style="color:#1e3a8a;">${esc(it.menti || 'Adsız Menti')} · ${esc(it.no || 'Görüşme')} (${esc(it.tarih || 'Tarihsiz')})</b>
