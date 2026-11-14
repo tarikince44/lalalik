@@ -5243,7 +5243,26 @@ html:not(.portal-mode) #lala-portal-view { display: none; }
                 };
                 window.triyajRaporYazdir = function () {
                     const client = currentClient();
-                    const last = loadHistoryArr()[0] || null;
+                    const __histArr = loadHistoryArr();
+                    const last = __histArr[0] || null;
+                    let __seyirHtml = '';
+                    if (__histArr.length > 1) {
+                        const seq = __histArr.slice().reverse();
+                        const avgs = seq.map(h => { let s2 = 0, n2 = 0; AREAS.forEach(a => { s2 += Number((h.areas || {})[a.id] !== undefined ? h.areas[a.id] : 5); n2++; }); return s2 / n2; });
+                        const W = 640, H = 90, pad = 14;
+                        const stepX = (W - pad * 2) / (seq.length - 1);
+                        const yOf = v => (H - pad) - (v / 10) * (H - pad * 2);
+                        const pts = avgs.map((v, i) => (pad + i * stepX).toFixed(1) + ',' + yOf(v).toFixed(1)).join(' ');
+                        const dots = seq.map((h, i) => { const vm2 = TRJ_VM[h.verdict] || ['•', '#475569']; return '<circle cx="' + (pad + i * stepX).toFixed(1) + '" cy="' + yOf(avgs[i]).toFixed(1) + '" r="4.5" fill="' + vm2[1] + '"/>'; }).join('');
+                        const dSon = avgs[avgs.length - 1] - avgs[0];
+                        __seyirHtml = '<p class="mut" style="margin-top:8px;"><b>Değerlendirme seyri (hayat haritası ortalaması, eski → yeni):</b></p>' +
+                            '<svg viewBox="0 0 ' + W + ' ' + H + '" style="width:100%;height:auto;display:block;">' +
+                            '<line x1="' + pad + '" y1="' + yOf(10) + '" x2="' + (W - pad) + '" y2="' + yOf(10) + '" stroke="#f1f5f9"/>' +
+                            '<line x1="' + pad + '" y1="' + yOf(5) + '" x2="' + (W - pad) + '" y2="' + yOf(5) + '" stroke="#e2e8f0" stroke-dasharray="3,3"/>' +
+                            '<line x1="' + pad + '" y1="' + yOf(0) + '" x2="' + (W - pad) + '" y2="' + yOf(0) + '" stroke="#e2e8f0"/>' +
+                            '<polyline points="' + pts + '" fill="none" stroke="#0f766e" stroke-width="2.5"/>' + dots + '</svg>' +
+                            '<p class="mut">İlk: <b>' + avgs[0].toFixed(1) + '</b> · Son: <b>' + avgs[avgs.length - 1].toFixed(1) + '</b> (' + (dSon > 0 ? '+' : '') + dSon.toFixed(1) + ') · ' + seq.length + ' değerlendirme</p>';
+                    }
                     const lows = lowestAreas();
                     const redEls = [...document.querySelectorAll('.trj-red')];
                     const redTexts = redEls.filter(c => c.checked).map(c => (c.closest('label') ? c.closest('label').textContent.trim() : 'İşaretli bayrak'));
@@ -5257,7 +5276,7 @@ html:not(.portal-mode) #lala-portal-view { display: none; }
                         (redTexts.length ? '<p style="color:#b91c1c;font-weight:700;">⚠️ ' + redTexts.length + ' kırmızı bayrak işaretli:</p><ul>' + redTexts.map(t => '<li>' + escH(t) + '</li>').join('') + '</ul>' : '<p style="color:#15803d;font-weight:700;">✓ Kırmızı bayrak işaretlenmedi.</p>') +
                         '<h2>2 · Hayat Haritası (0–10)</h2>' +
                         lows.map(a => '<div style="display:flex;align-items:center;gap:8px;margin:3px 0;font-size:10pt;"><span style="flex:0 0 60mm;">' + escH(a.label) + '</span><span class="bar" style="flex:1;"><i style="width:' + (a.v * 10) + '%;background:' + areaColor(a.v) + ';"></i></span><b style="flex:0 0 12mm;text-align:right;">' + a.v + '</b></div>').join('') +
-                        '<h2>3 · Profil Yanıtları</h2><table>' + profil.map(r => '<tr><td style="width:45mm;background:#f8fafc;font-weight:700;">' + r[0] + '</td><td>' + escH(r[1] || '—') + '</td></tr>').join('') + '</table>' +
+                        __seyirHtml + '<h2>3 · Profil Yanıtları</h2><table>' + profil.map(r => '<tr><td style="width:45mm;background:#f8fafc;font-weight:700;">' + r[0] + '</td><td>' + escH(r[1] || '—') + '</td></tr>').join('') + '</table>' +
                         (last ? '<h2>4 · Son Değerlendirme Sonucu</h2><p>' + (vm ? '<b style="color:' + vm[1] + ';">' + vm[0] + '</b> · ' : '') + (last.primary ? 'Birincil öneri: <b>' + escH(SVC_NAME[last.primary] || last.primary) + '</b>' : '') + (last.secondary ? ' · Destekleyici: <b>' + escH(SVC_NAME[last.secondary] || last.secondary) + '</b>' : '') + ' <span class="mut">(' + new Date(last.t).toLocaleString('tr-TR') + ')</span></p>' : '<h2>4 · Değerlendirme</h2><p class="mut">Bu oturumda henüz değerlendirme çalıştırılmadı.</p>') +
                         '<p class="mut" style="margin-top:18px;border-top:1px solid #cbd5e1;padding-top:8px;">Bu rapor tanı koymaz; koçluk/mentörlük yönlendirmesine yardımcı bir triyaj özetidir. Kırmızı bayrak varlığında koçluk başlatılmaz, uzmana sevk gerekir.</p>' +
                         '</body></html>';
