@@ -5357,6 +5357,22 @@ html:not(.portal-mode) #lala-portal-view { display: none; }
                     if (typeof showToast === 'function') showToast('Triyaj özeti gündem alanına eklendi.', 'success');
                 };
 
+                /* Kaydedilen seansa eklenecek tek satirlik triyaj ozeti (belirtilen danisanin sakli durumundan; UI'dan bagimsiz) */
+                window.triyajOzetFor = function (clientName) {
+                    try {
+                        const raw = localStorage.getItem(TRJ_PREFIX + clientName);
+                        if (!raw) return '';
+                        const st = JSON.parse(raw) || {};
+                        const redN = (st.red || []).length;
+                        const lows = AREAS.map(a => ({ a, v: Number((st.areas || {})[a.id] !== undefined ? st.areas[a.id] : 5) }))
+                            .sort((x, y) => x.v - y.v).slice(0, 3)
+                            .map(x => x.a.label.replace(/^[^ ]+ /, '') + ' ' + x.v + '/10');
+                        return 'Kırmızı bayrak: ' + (redN ? redN + ' adet (KRİZ protokolü)' : 'Yok') +
+                            ' | Kırılgan 3: ' + lows.join(', ') +
+                            ' | Profil: yaş=' + (st.yas || '-') + ', neden=' + (st.neden || '-') + ', süre=' + (st.sure || '-') + ', etki=' + (st.etki || '-') + ', geçmiş=' + (st.gecmis || '-');
+                    } catch (e) { return ''; }
+                };
+
                 window.triyajSifirla = function () {
                     try { localStorage.removeItem(triyajKey()); } catch (e) {}
                     document.querySelectorAll('.trj-red').forEach(c => { c.checked = false; });
@@ -36830,6 +36846,8 @@ ightarrow$ 🟣 Bilinmeyen)</span>
                 <div>
                     <b>${item.menti || 'Adsız Menti'}</b> · <span style="color:#64748b;">${item.no || 'Görüşme'} (${item.tarih || 'Tarihsiz'})</span>
                     <div style="font-size:12px;color:#059669;margin-top:2px;">Ruh Hali: ${item.mood}/10 · Enerji: ${item.energy}/10 · Stres: ${item.stress}/10</div>
+                    ${item.triyaj ? `<div style="font-size:11.5px;color:#6d28d9;margin-top:2px;">&#9873; Triyaj: ${item.triyaj}</div>` : ''}
+                    ${item.hizmet ? `<div style="font-size:11.5px;color:#1e40af;margin-top:2px;">&#129513; Hizmet: ${item.hizmet}</div>` : ''}
                 </div>
                 <div style="display:flex;gap:6px;">
                     <button type="button" class="btn-load-takip" data-idx="${idx}" style="padding:3px 8px;border:1px solid #2563eb;background:#eff6ff;color:#2563eb;border-radius:4px;cursor:pointer;font-size:12px;">Yükle</button>
@@ -36926,6 +36944,14 @@ ightarrow$ 🟣 Bilinmeyen)</span>
                 lalaNot: document.getElementById('t-lala-not').value,
                 kayitTarihi: new Date().toISOString()
             }
+            try {
+                if (typeof window.triyajOzetFor === 'function') {
+                    const __trj = window.triyajOzetFor(item.menti);
+                    if (__trj) item.triyaj = __trj;
+                }
+                const __svc = document.getElementById('seans-service-select');
+                if (__svc && __svc.value && __svc.value !== 'genel') item.hizmet = __svc.options[__svc.selectedIndex].textContent.trim();
+            } catch (e) {}
             const list = getTakipData()
             list.unshift(item)
             saveTakipData(list)
