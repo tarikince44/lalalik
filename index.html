@@ -4995,7 +4995,7 @@ html:not(.portal-mode) #lala-portal-view { display: none; }
                 <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;margin-bottom:8px;">
                     <div>
                         <span style="font-weight:800;color:#0f766e;font-size:14px;">🧭 Triyaj & Müdahale Karar Matrisi</span>
-                        <p style="margin:2px 0 0;font-size:11.5px;color:#475569;line-height:1.45;">İlk görüşmede 4 adımı sırayla işaretleyin; matris, danışanın hayat haritasını çıkarır ve hangi danışmanlık hizmetiyle ilerlemeniz gerektiğini <b>gerekçesiyle</b> önerir. Deneyim gerektirmez: kırmızı = dur, sarı = dikkat, yeşil = uygun.</p>
+                        <p style="margin:2px 0 0;font-size:11.5px;color:#475569;line-height:1.45;">İlk görüşmede 4 adımı sırayla işaretleyin; matris, danışanın hayat haritasını çıkarır ve hangi danışmanlık hizmetiyle ilerlemeniz gerektiğini <b>gerekçesiyle</b> önerir. Deneyim gerektirmez: kırmızı = dur, sarı = dikkat, yeşil = uygun. Yanıtlar <b>aktif danışana göre</b> saklanır; danışan değiştirdiğinizde matris o kişinin yanıtlarıyla dolar.</p>
                     </div>
                     <button type="button" onclick="triyajSifirla()" class="sim-btn secondary" style="font-size:11px;padding:3px 8px;">↺ Sıfırla</button>
                 </div>
@@ -5126,7 +5126,13 @@ html:not(.portal-mode) #lala-portal-view { display: none; }
 
             <script>
             (function () {
-                const TRJ_KEY = 'lala_triyaj_state_v1';
+                const TRJ_PREFIX = 'lala_triyaj_state_v1::';
+                function currentClient() {
+                    const sel = document.getElementById('crm-client-select');
+                    const m = document.getElementById('t-menti');
+                    return ((sel && sel.value) || (m && m.value) || 'genel').trim();
+                }
+                function triyajKey() { return TRJ_PREFIX + currentClient(); }
                 const AREAS = [
                     { id: 'uyku',   label: '😴 Uyku & Fiziksel Sağlık',      svc: 'hazirklinik', note: 'Uyku/temel beden düzeni 2+ haftadır bozuksa tıbbi değerlendirme önerilir; klinik protokoller destekler.' },
                     { id: 'duygu',  label: '💗 Duygusal Denge',              svc: 'yetiskin',    note: 'Kaygı/çökkünlük baskınsa BDT hattı (Yetişkin veya Hazır Klinik) ana rota olur.' },
@@ -5149,13 +5155,23 @@ html:not(.portal-mode) #lala-portal-view { display: none; }
                 };
 
                 function loadState() {
-                    try { return JSON.parse(localStorage.getItem(TRJ_KEY)) || {}; } catch (e) { return {}; }
+                    try {
+                        const raw = localStorage.getItem(triyajKey());
+                        if (raw) return JSON.parse(raw) || {};
+                        const legacy = localStorage.getItem('lala_triyaj_state_v1');
+                        if (legacy) {
+                            localStorage.setItem(triyajKey(), legacy);
+                            localStorage.removeItem('lala_triyaj_state_v1');
+                            return JSON.parse(legacy) || {};
+                        }
+                    } catch (e) {}
+                    return {};
                 }
                 function saveState() {
                     const st = { areas: {}, red: [], yas: val('trj-yas'), neden: val('trj-neden'), sure: val('trj-sure'), etki: val('trj-etki'), gecmis: val('trj-gecmis') };
                     document.querySelectorAll('.trj-red').forEach((c, i) => { if (c.checked) st.red.push(i); });
                     AREAS.forEach(a => { const el = document.getElementById('trj-a-' + a.id); if (el) st.areas[a.id] = el.value; });
-                    try { localStorage.setItem(TRJ_KEY, JSON.stringify(st)); } catch (e) {}
+                    try { localStorage.setItem(triyajKey(), JSON.stringify(st)); } catch (e) {}
                 }
                 function val(id) { const el = document.getElementById(id); return el ? el.value : ''; }
                 function setVal(id, v) { const el = document.getElementById(id); if (el && v) el.value = v; }
@@ -5170,14 +5186,33 @@ html:not(.portal-mode) #lala-portal-view { display: none; }
                             <input type="range" id="trj-a-${a.id}" min="0" max="10" value="5" style="flex:1;accent-color:#0f766e;" oninput="triyajAreaInput('${a.id}')">
                             <b id="trj-a-out-${a.id}" style="flex:0 0 34px;text-align:right;color:#d97706;">5</b>
                         </div>`).join('');
-                    const st = loadState();
-                    if (st.areas) AREAS.forEach(a => { if (st.areas[a.id] !== undefined) { const el = document.getElementById('trj-a-' + a.id); if (el) el.value = st.areas[a.id]; } });
-                    AREAS.forEach(a => triyajAreaInput(a.id, true));
-                    if (st.red) st.red.forEach(i => { const c = document.querySelectorAll('.trj-red')[i]; if (c) c.checked = true; });
-                    ['yas', 'neden', 'sure', 'etki', 'gecmis'].forEach(k => setVal('trj-' + k, st[k]));
-                    updateCrisisBox();
+                    function applyStateToUI(st) {
+                        st = st || {};
+                        AREAS.forEach(a => { const el = document.getElementById('trj-a-' + a.id); if (el) el.value = (st.areas && st.areas[a.id] !== undefined) ? st.areas[a.id] : 5; });
+                        document.querySelectorAll('.trj-red').forEach((c, i) => { c.checked = !!(st.red && st.red.indexOf(i) > -1); });
+                        ['yas', 'neden', 'sure', 'etki', 'gecmis'].forEach(k => setVal('trj-' + k, st[k] || ''));
+                        AREAS.forEach(a => triyajAreaInput(a.id, true));
+                        updateCrisisBox();
+                        const res = document.getElementById('trj-result');
+                        if (res) { res.style.display = 'none'; res.innerHTML = ''; }
+                    }
+                    let lastClient = null;
+                    window.triyajReloadForClient = function (force) {
+                        const c = currentClient();
+                        if (c !== lastClient || force) { lastClient = c; applyStateToUI(loadState()); }
+                    };
+                    window.triyajReloadForClient(true);
                     document.querySelectorAll('.trj-red').forEach(c => c.addEventListener('change', () => { updateCrisisBox(); saveState(); }));
                     ['trj-yas', 'trj-neden', 'trj-sure', 'trj-etki', 'trj-gecmis'].forEach(id => { const el = document.getElementById(id); if (el) el.addEventListener('change', saveState); });
+                    // Aktif danışan değişiminde matrisi o danışanın yanıtlarıyla tazele
+                    setTimeout(() => {
+                        const crmSel = document.getElementById('crm-client-select');
+                        if (crmSel) crmSel.addEventListener('change', () => window.triyajReloadForClient(true));
+                        const mentiEl = document.getElementById('t-menti');
+                        if (mentiEl) mentiEl.addEventListener('change', () => window.triyajReloadForClient(true));
+                    }, 600);
+                    const panelEl = document.getElementById('triyaj-panel');
+                    if (panelEl) panelEl.addEventListener('focusin', () => window.triyajReloadForClient(false));
                 }
 
                 window.triyajAreaInput = function (id, silent) {
@@ -5323,7 +5358,7 @@ html:not(.portal-mode) #lala-portal-view { display: none; }
                 };
 
                 window.triyajSifirla = function () {
-                    try { localStorage.removeItem(TRJ_KEY); } catch (e) {}
+                    try { localStorage.removeItem(triyajKey()); } catch (e) {}
                     document.querySelectorAll('.trj-red').forEach(c => { c.checked = false; });
                     AREAS.forEach(a => { const el = document.getElementById('trj-a-' + a.id); if (el) el.value = 5; triyajAreaInput(a.id, true); });
                     ['trj-yas', 'trj-neden', 'trj-sure', 'trj-etki', 'trj-gecmis'].forEach(id => setVal(id, ''));
