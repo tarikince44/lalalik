@@ -4874,6 +4874,14 @@ html:not(.portal-mode) #lala-portal-view { display: none; }
                     <button type="button" onclick="triyajSifirla()" class="sim-btn secondary" style="font-size:11px;padding:3px 8px;">↺ Sıfırla</button>
                 </div>
 
+                <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-bottom:10px;font-size:11.5px;color:#64748b;">
+                    <b style="color:#0f766e;">Eğitim şablonları:</b>
+                    <button type="button" onclick="triyajSablon('ergen_sinav')" class="sim-btn secondary" style="font-size:11px;padding:3px 9px;">📚 Sınav kaygısı (ergen)</button>
+                    <button type="button" onclick="triyajSablon('yonetici_tukenmislik')" class="sim-btn secondary" style="font-size:11px;padding:3px 9px;">👔 Tükenmişlik (yönetici)</button>
+                    <button type="button" onclick="triyajSablon('iliski_krizi')" class="sim-btn secondary" style="font-size:11px;padding:3px 9px;">❤️ İlişki krizi (yetişkin)</button>
+                    <span>tek dokunuşla doldurur; “Matrisi Değerlendir” ile akışı deneyin.</span>
+                </div>
+
                 <details open style="margin-bottom:8px;">
                     <summary style="cursor:pointer;font-weight:700;font-size:12.5px;color:#b91c1c;padding:4px 0;">Adım 1 · Güvenlik Triyajı (Kırmızı Bayraklar) <span style="font-weight:400;font-size:11px;color:#64748b;">— herhangi biri “evet” ise koçluk seansı başlamaz</span></summary>
                     <div id="trj-red-flags" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:6px;margin-top:6px;">
@@ -4964,9 +4972,12 @@ html:not(.portal-mode) #lala-portal-view { display: none; }
                 <div style="display:flex;gap:8px;flex-wrap:wrap;margin:6px 0 10px;">
                     <button type="button" onclick="triyajDegerlendir()" class="sim-btn" style="background:#0f766e;font-size:12.5px;padding:7px 16px;">🧮 Matrisi Değerlendir</button>
                     <button type="button" onclick="triyajOzetAktar()" class="sim-btn secondary" style="font-size:11.5px;padding:5px 12px;" title="Triyaj özetini seans formundaki gündem alanına aktarır (Seans sayfası)">📋 Özeti Gündeme Aktar</button>
+                    <button type="button" onclick="triyajRaporYazdir()" class="sim-btn secondary" style="font-size:11.5px;padding:5px 12px;" title="Mevcut matrisi ve son değerlendirme sonucunu yazdırılabilir rapor olarak açar">🖨️ Rapor</button>
                 </div>
 
                 <div id="trj-result" style="display:none;"></div>
+
+                <div id="trj-history" style="margin-top:12px;"></div>
 
                 <details style="margin-top:10px;">
                     <summary style="cursor:pointer;font-weight:700;font-size:12px;color:#475569;padding:4px 0;">📖 Başvuru Tablosu: 13 hizmet, hangi durumda kullanılır? (yeni danışmanlar için)</summary>
@@ -5070,10 +5081,11 @@ html:not(.portal-mode) #lala-portal-view { display: none; }
                         const res = document.getElementById('trj-result');
                         if (res) { res.style.display = 'none'; res.innerHTML = ''; }
                     }
+                    window.__trjApplyStateToUI = applyStateToUI;
                     let lastClient = null;
                     window.triyajReloadForClient = function (force) {
                         const c = currentClient();
-                        if (c !== lastClient || force) { lastClient = c; applyStateToUI(loadState()); }
+                        if (c !== lastClient || force) { lastClient = c; applyStateToUI(loadState()); renderHistory(); }
                     };
                     window.triyajReloadForClient(true);
                     document.querySelectorAll('.trj-red').forEach(c => c.addEventListener('change', () => { updateCrisisBox(); saveState(); }));
@@ -5119,10 +5131,129 @@ html:not(.portal-mode) #lala-portal-view { display: none; }
                     if (box) box.style.display = any ? 'block' : 'none';
                 }
 
+                /* ---------- Triyaj guclendirme: gecmis, karsilastirma, sablon, rapor ---------- */
+                function escH(x) { return String(x == null ? '' : x).replace(/[&<>"']/g, ch => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[ch])); }
+                function histKey() { return 'lala_triyaj_gecmis_v1::' + currentClient(); }
+                function loadHistoryArr() { try { return JSON.parse(localStorage.getItem(histKey())) || []; } catch (e) { return []; } }
+                function recordHistory(rec) {
+                    const arr = loadHistoryArr();
+                    const st = { areas: {}, red: [], yas: val('trj-yas'), neden: val('trj-neden'), sure: val('trj-sure'), etki: val('trj-etki'), gecmis: val('trj-gecmis') };
+                    document.querySelectorAll('.trj-red').forEach((c, i) => { if (c.checked) st.red.push(i); });
+                    AREAS.forEach(a => { const el = document.getElementById('trj-a-' + a.id); if (el) st.areas[a.id] = Number(el.value); });
+                    arr.unshift(Object.assign({ t: new Date().toISOString() }, rec, st, { redN: st.red.length }));
+                    while (arr.length > 20) arr.pop();
+                    try { localStorage.setItem(histKey(), JSON.stringify(arr)); } catch (e) {}
+                }
+                function buildBarsHtml() {
+                    const rows = lowestAreas().map(a =>
+                        '<div style="display:flex;align-items:center;gap:8px;font-size:11.5px;margin:3px 0;">' +
+                        '<span style="flex:0 0 185px;color:#334155;">' + escH(a.label) + '</span>' +
+                        '<span style="flex:1;background:#f1f5f9;border-radius:99px;height:9px;overflow:hidden;"><i style="display:block;height:100%;width:' + (a.v * 10) + '%;background:' + areaColor(a.v) + ';"></i></span>' +
+                        '<b style="flex:0 0 40px;text-align:right;color:' + areaColor(a.v) + ';">' + a.v + '</b></div>').join('');
+                    return '<div style="margin-top:8px;background:#fff;border:1px solid #e2e8f0;border-radius:8px;padding:10px 12px;">' +
+                        '<div style="font-size:11px;font-weight:800;color:#475569;text-transform:uppercase;letter-spacing:.04em;margin-bottom:4px;">🗺️ Hayat haritası görünümü (düşükten yükseğe)</div>' + rows + '</div>';
+                }
+                function buildCompareHtml(prev) {
+                    if (!prev || !prev.areas) return '';
+                    let pSum = 0, cSum = 0, n = 0, best = null, worst = null;
+                    AREAS.forEach(a => {
+                        const el = document.getElementById('trj-a-' + a.id);
+                        const cv = el ? Number(el.value) : 5;
+                        const pv = Number(prev.areas[a.id] !== undefined ? prev.areas[a.id] : 5);
+                        pSum += pv; cSum += cv; n++;
+                        const d = cv - pv;
+                        if (!best || d > best.d) best = { a, d };
+                        if (!worst || d < worst.d) worst = { a, d };
+                    });
+                    const pa = (pSum / n).toFixed(1), ca = (cSum / n).toFixed(1), dd = (cSum - pSum) / n;
+                    const ds = new Date(prev.t).toLocaleDateString('tr-TR');
+                    let extra = '';
+                    if (best && best.d > 0) extra += ' En çok iyileşen: <b>' + escH(best.a.label) + ' (+' + best.d + ')</b>.';
+                    if (worst && worst.d < 0) extra += ' <span style="color:#b91c1c;">Gerileyen: <b>' + escH(worst.a.label) + ' (' + worst.d + ')</b> — takip önerilir.</span>';
+                    if (!extra) extra = ' Alan puanları önceki değerlendirmeyle aynı.';
+                    return '<div style="margin-top:8px;background:#f5f3ff;border:1px solid #c4b5fd;color:#5b21b6;border-radius:7px;padding:8px 10px;font-size:11.5px;line-height:1.55;">📊 <b>Önceki değerlendirme (' + ds + ') ile karşılaştırma:</b> hayat haritası ortalaması <b>' + pa + ' → ' + ca + '</b> (' + (dd > 0 ? '+' : '') + dd.toFixed(1) + ').' + extra + '</div>';
+                }
+                const TRJ_VM = { kriz: ['🛑 KRİZ', '#7f1d1d'], turuncu: ['🟠 KLİNİK ÖNCELİK', '#9a3412'], sari: ['🟡 DİKKAT', '#a16207'], yesil: ['🟢 UYGUN', '#14532d'] };
+                function renderHistory() {
+                    const host = document.getElementById('trj-history');
+                    if (!host) return;
+                    const arr = loadHistoryArr();
+                    if (!arr.length) { host.innerHTML = ''; return; }
+                    host.innerHTML = '<div style="border-top:1px dashed #cbd5e1;padding-top:8px;">' +
+                        '<div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:6px;margin-bottom:4px;">' +
+                        '<b style="font-size:12px;color:#0f766e;">🗂️ Değerlendirme geçmişi — ' + escH(currentClient()) + ' (' + arr.length + ')</b>' +
+                        '<button type="button" onclick="triyajGecmisTemizle()" class="sim-btn secondary" style="font-size:10.5px;padding:2px 8px;">Geçmişi Temizle</button></div>' +
+                        arr.map((h, i) => {
+                            const vm = TRJ_VM[h.verdict] || ['•', '#475569'];
+                            const dt = new Date(h.t);
+                            const ds = dt.toLocaleDateString('tr-TR') + ' ' + dt.toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' });
+                            return '<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;background:#f8fafc;border:1px solid #e2e8f0;border-radius:7px;padding:6px 9px;margin:4px 0;font-size:11.5px;">' +
+                                '<span style="background:' + vm[1] + ';color:#fff;border-radius:99px;padding:1px 8px;font-weight:800;font-size:10.5px;">' + vm[0] + '</span>' +
+                                '<span style="color:#64748b;">' + ds + '</span>' +
+                                (h.primary ? '<span>→ <b>' + escH(SVC_NAME[h.primary] || h.primary) + '</b></span>' : '') +
+                                (h.redN ? '<span style="color:#b91c1c;font-weight:700;">⚑ ' + h.redN + ' bayrak</span>' : '') +
+                                '<button type="button" onclick="triyajGecmisYukle(' + i + ')" class="sim-btn secondary" style="margin-left:auto;font-size:10.5px;padding:2px 8px;" title="Bu değerlendirmedeki yanıtları matrise geri yükler">Geri Yükle</button>' +
+                                '</div>';
+                        }).join('') + '</div>';
+                }
+                window.triyajGecmisYukle = function (i) {
+                    const h = loadHistoryArr()[i];
+                    if (!h || !window.__trjApplyStateToUI) return;
+                    window.__trjApplyStateToUI({ areas: h.areas, red: h.red, yas: h.yas, neden: h.neden, sure: h.sure, etki: h.etki, gecmis: h.gecmis });
+                    saveState();
+                    if (typeof showToast === 'function') showToast('Geçmiş değerlendirme matrise geri yüklendi.', 'info');
+                };
+                window.triyajGecmisTemizle = async function () {
+                    const ok = (typeof appConfirm === 'function') ? await appConfirm('Bu danışana ait değerlendirme geçmişi silinsin mi?') : confirm('Değerlendirme geçmişi silinsin mi?');
+                    if (!ok) return;
+                    try { localStorage.removeItem(histKey()); } catch (e) {}
+                    renderHistory();
+                };
+                window.triyajSablon = function (key) {
+                    const P = {
+                        ergen_sinav: { areas: { uyku: 5, duygu: 4, aile: 5, iliski: 6, is: 6, egitim: 3, sosyal: 6, maddi: 6, anlam: 5, duzen: 4 }, red: [], yas: 'cocuk-ergen', neden: 'sinav', sure: 'orta', etki: 'orta', gecmis: 'yok' },
+                        yonetici_tukenmislik: { areas: { uyku: 4, duygu: 5, aile: 5, iliski: 5, is: 3, egitim: 7, sosyal: 5, maddi: 7, anlam: 4, duzen: 4 }, red: [], yas: 'yetiskin', neden: 'is', sure: 'orta', etki: 'agir', gecmis: 'yok' },
+                        iliski_krizi: { areas: { uyku: 5, duygu: 4, aile: 4, iliski: 2, is: 6, egitim: 6, sosyal: 5, maddi: 5, anlam: 5, duzen: 5 }, red: [], yas: 'yetiskin', neden: 'iliski', sure: 'orta', etki: 'orta', gecmis: 'yok' }
+                    };
+                    const pr = P[key];
+                    if (!pr || !window.__trjApplyStateToUI) return;
+                    window.__trjApplyStateToUI(pr);
+                    saveState();
+                    if (typeof showToast === 'function') showToast('Şablon yüklendi — şimdi “Matrisi Değerlendir”e basın.', 'success');
+                };
+                window.triyajRaporYazdir = function () {
+                    const client = currentClient();
+                    const last = loadHistoryArr()[0] || null;
+                    const lows = lowestAreas();
+                    const redEls = [...document.querySelectorAll('.trj-red')];
+                    const redTexts = redEls.filter(c => c.checked).map(c => (c.closest('label') ? c.closest('label').textContent.trim() : 'İşaretli bayrak'));
+                    const vm = last ? (TRJ_VM[last.verdict] || null) : null;
+                    const profil = [['Yaş grubu', val('trj-yas')], ['Başvuru nedeni', val('trj-neden')], ['Süre', val('trj-sure')], ['İşlevselliğe etkisi', val('trj-etki')], ['Geçmiş destek', val('trj-gecmis')]];
+                    const html = '<!DOCTYPE html><html lang="tr"><head><meta charset="utf-8"><title>Triyaj Raporu — ' + escH(client) + '</title>' +
+                        '<style>body{font-family:"Segoe UI",Arial,sans-serif;color:#1f2937;max-width:170mm;margin:0 auto;padding:14mm;font-size:11pt;line-height:1.5;}h1{font-size:16pt;color:#0f766e;border-bottom:2px solid #0f766e;padding-bottom:6px;}h2{font-size:12pt;color:#0f766e;margin:14px 0 6px;}table{border-collapse:collapse;width:100%;font-size:10pt;}td{border:1px solid #cbd5e1;padding:4px 8px;}.bar{height:10px;border-radius:99px;background:#f1f5f9;overflow:hidden;}.bar i{display:block;height:100%;}.mut{color:#64748b;font-size:9pt;}@media print{body{padding:0;}}</style></head><body>' +
+                        '<h1>🧭 Triyaj &amp; Müdahale Karar Raporu</h1>' +
+                        '<p class="mut">Danışan: <b>' + escH(client) + '</b> · Rapor tarihi: ' + new Date().toLocaleString('tr-TR') + ' · Lalalık Paneli</p>' +
+                        '<h2>1 · Güvenlik Triyajı</h2>' +
+                        (redTexts.length ? '<p style="color:#b91c1c;font-weight:700;">⚠️ ' + redTexts.length + ' kırmızı bayrak işaretli:</p><ul>' + redTexts.map(t => '<li>' + escH(t) + '</li>').join('') + '</ul>' : '<p style="color:#15803d;font-weight:700;">✓ Kırmızı bayrak işaretlenmedi.</p>') +
+                        '<h2>2 · Hayat Haritası (0–10)</h2>' +
+                        lows.map(a => '<div style="display:flex;align-items:center;gap:8px;margin:3px 0;font-size:10pt;"><span style="flex:0 0 60mm;">' + escH(a.label) + '</span><span class="bar" style="flex:1;"><i style="width:' + (a.v * 10) + '%;background:' + areaColor(a.v) + ';"></i></span><b style="flex:0 0 12mm;text-align:right;">' + a.v + '</b></div>').join('') +
+                        '<h2>3 · Profil Yanıtları</h2><table>' + profil.map(r => '<tr><td style="width:45mm;background:#f8fafc;font-weight:700;">' + r[0] + '</td><td>' + escH(r[1] || '—') + '</td></tr>').join('') + '</table>' +
+                        (last ? '<h2>4 · Son Değerlendirme Sonucu</h2><p>' + (vm ? '<b style="color:' + vm[1] + ';">' + vm[0] + '</b> · ' : '') + (last.primary ? 'Birincil öneri: <b>' + escH(SVC_NAME[last.primary] || last.primary) + '</b>' : '') + (last.secondary ? ' · Destekleyici: <b>' + escH(SVC_NAME[last.secondary] || last.secondary) + '</b>' : '') + ' <span class="mut">(' + new Date(last.t).toLocaleString('tr-TR') + ')</span></p>' : '<h2>4 · Değerlendirme</h2><p class="mut">Bu oturumda henüz değerlendirme çalıştırılmadı.</p>') +
+                        '<p class="mut" style="margin-top:18px;border-top:1px solid #cbd5e1;padding-top:8px;">Bu rapor tanı koymaz; koçluk/mentörlük yönlendirmesine yardımcı bir triyaj özetidir. Kırmızı bayrak varlığında koçluk başlatılmaz, uzmana sevk gerekir.</p>' +
+                        '</body></html>';
+                    const w = window.open('', '_blank');
+                    if (!w) { if (typeof appAlert === 'function') appAlert('Açılır pencere engellendi; tarayıcı izinlerinden açılır pencerelere izin verin.', 'Rapor'); return; }
+                    w.document.write(html);
+                    w.document.close();
+                    w.focus();
+                    setTimeout(() => { try { w.print(); } catch (e) {} }, 350);
+                };
+
                 window.triyajDegerlendir = function () {
                     saveState();
                     const res = document.getElementById('trj-result');
                     if (!res) return;
+                    const __prevTrj = loadHistoryArr()[0] || null;
 
                     // Kırmızı bayrak → kriz sonucu
                     if ([...document.querySelectorAll('.trj-red')].some(c => c.checked)) {
@@ -5130,6 +5261,8 @@ html:not(.portal-mode) #lala-portal-view { display: none; }
                         res.innerHTML = `<div style="background:#7f1d1d;color:#fff;border-radius:8px;padding:12px 14px;font-size:12.5px;line-height:1.6;">
                             <b>🛑 Matris sonucu: KRİZ — koçluk hizmeti başlatılmaz.</b><br>
                             İşaretlediğiniz kırmızı bayrak(lar) koçluk/mentörlük kapsamı dışındadır. Adım 1'deki kriz protokolünü izleyin: TIPP aracı + aynı gün uzmana sevk (Klinik Sevk Mektubu hazır). Danışan stabil hale geldiğinde tablo yeniden değerlendirilir.</div>`;
+                        recordHistory({ verdict: 'kriz', primary: null, secondary: null });
+                        renderHistory();
                         res.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
                         return;
                     }
@@ -5206,6 +5339,9 @@ html:not(.portal-mode) #lala-portal-view { display: none; }
                         </div>
                         ${reasons.length ? `<div style="margin-top:8px;background:#f8fafc;border:1px solid #e2e8f0;border-radius:7px;padding:8px 10px;font-size:11.5px;color:#475569;line-height:1.6;">${reasons.map(r => '• ' + r).join('<br>')}</div>` : ''}
                         ${referralNote}`;
+                    recordHistory({ verdict: (klinik >= 4 ? 'turuncu' : (klinik === 3 ? 'sari' : 'yesil')), klinik: klinik, primary: primary, secondary: secondary });
+                    res.innerHTML += buildBarsHtml() + buildCompareHtml(__prevTrj);
+                    renderHistory();
                     res.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
                 };
 
@@ -5242,7 +5378,15 @@ html:not(.portal-mode) #lala-portal-view { display: none; }
                             .map(x => x.a.label.replace(/^[^ ]+ /, '') + ' ' + x.v + '/10');
                         return 'Kırmızı bayrak: ' + (redN ? redN + ' adet (KRİZ protokolü)' : 'Yok') +
                             ' | Kırılgan 3: ' + lows.join(', ') +
-                            ' | Profil: yaş=' + (st.yas || '-') + ', neden=' + (st.neden || '-') + ', süre=' + (st.sure || '-') + ', etki=' + (st.etki || '-') + ', geçmiş=' + (st.gecmis || '-');
+                            ' | Profil: yaş=' + (st.yas || '-') + ', neden=' + (st.neden || '-') + ', süre=' + (st.sure || '-') + ', etki=' + (st.etki || '-') + ', geçmiş=' + (st.gecmis || '-') +
+                            (function () {
+                                try {
+                                    const h = JSON.parse(localStorage.getItem('lala_triyaj_gecmis_v1::' + clientName) || '[]')[0];
+                                    if (!h) return '';
+                                    const VT = { kriz: '🛑 KRİZ', turuncu: '🟠 KLİNİK ÖNCELİK', sari: '🟡 DİKKAT', yesil: '🟢 UYGUN' };
+                                    return ' | Son karar: ' + (VT[h.verdict] || '-') + (h.primary ? ' → ' + (SVC_NAME[h.primary] || h.primary) : '');
+                                } catch (e) { return ''; }
+                            })();
                     } catch (e) { return ''; }
                 };
 
