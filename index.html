@@ -4973,6 +4973,7 @@ html:not(.portal-mode) #lala-portal-view { display: none; }
                     <button type="button" onclick="triyajDegerlendir()" class="sim-btn" style="background:#0f766e;font-size:12.5px;padding:7px 16px;">🧮 Matrisi Değerlendir</button>
                     <button type="button" onclick="triyajOzetAktar()" class="sim-btn secondary" style="font-size:11.5px;padding:5px 12px;" title="Triyaj özetini seans formundaki gündem alanına aktarır (Seans sayfası)">📋 Özeti Gündeme Aktar</button>
                     <button type="button" onclick="triyajRaporYazdir()" class="sim-btn secondary" style="font-size:11.5px;padding:5px 12px;" title="Mevcut matrisi ve son değerlendirme sonucunu yazdırılabilir rapor olarak açar">🖨️ Rapor</button>
+                    <button type="button" onclick="triyajSadeOzet()" class="sim-btn secondary" style="font-size:11.5px;padding:5px 12px;" title="Danışanla paylaşılabilecek, teknik terim içermeyen tek sayfalık özet açar">🌿 Sade Özet</button>
                 </div>
 
                 <div id="trj-result" style="display:none;"></div>
@@ -5282,6 +5283,90 @@ html:not(.portal-mode) #lala-portal-view { display: none; }
                         '</body></html>';
                     const w = window.open('', '_blank');
                     if (!w) { if (typeof appAlert === 'function') appAlert('Açılır pencere engellendi; tarayıcı izinlerinden açılır pencerelere izin verin.', 'Rapor'); return; }
+                    w.document.write(html);
+                    w.document.close();
+                    w.focus();
+                    setTimeout(() => { try { w.print(); } catch (e) {} }, 350);
+                };
+
+                /* ---------- Danisan dostu sade ozet (teknik terimsiz, tek sayfa) ---------- */
+                window.triyajSadeOzet = function () {
+                    const client = currentClient();
+                    const hist = loadHistoryArr();
+                    const last = hist[0] || null;
+                    const prev = hist[1] || null;
+                    const areaVal = id => {
+                        if (last && last.areas && last.areas[id] !== undefined) return Number(last.areas[id]);
+                        const el = document.getElementById('trj-a-' + id);
+                        return el ? Number(el.value) : 5;
+                    };
+                    const arr = AREAS.map(a => ({ id: a.id, label: a.label, v: areaVal(a.id) }));
+                    const FRIEND = {
+                        uyku:   ['Uyku ve bedensel enerji', 'Bu hafta yatış saatinizi 15 dakika erkene almayı deneyin; küçük ama düzenli adım büyük fark yaratır.'],
+                        duygu:  ['Duygusal denge', 'Her akşam kendinize 1 ile 10 arasında bir puan verin; duygunuzu isimlendirmek bile hafifletir.'],
+                        aile:   ['Aile içi iletişim', 'Haftada bir kez, çatışmasız kısa bir aile sohbeti planlayın; konu günlük küçük bir şey olsun.'],
+                        iliski: ['Eş / partner ilişkisi', 'Bu hafta partnerinize bir kez açık bir takdir cümlesi kurun.'],
+                        is:     ['İş ve kariyer', 'İş gününüze 10 dakikalık gerçek bir mola bloğu ekleyin; telefonsuz ve ekransız.'],
+                        egitim: ['Eğitim ve sınavlar', '25 dakikalık tek odaklı çalışma bloklarıyla başlayın; blok aralarında kısa yürüyüş.'],
+                        sosyal: ['Sosyal çevre', 'Bu hafta bir arkadaşınızla kısa bir görüşme planlayın; bir kahve bile yeter.'],
+                        maddi:  ['Maddi güvence', 'Bu ayın gelir-gider tablosunu tek sayfada görün; netlik kaygıyı azaltır.'],
+                        anlam:  ['Anlam ve maneviyat', 'Size iyi gelen bir değerinizi hatırlayın ve bugün küçük bir davranışla yaşatın.'],
+                        duzen:  ['Günlük düzen ve alışkanlıklar', 'Tek bir mikro alışkanlık seçin ve 21 günlük zincirinizi başlatın; hedef küçük olsun, düzenli olsun.']
+                    };
+                    const VERDICT_F = {
+                        kriz:    ['Önceliğimiz sizin güvenliğiniz', '#7f1d1d', 'Bu görüşmede içinden geçtiğiniz dönemin ağırlığını birlikte fark ettik. Sizi en doğru desteğe ulaştırmak için uzman yönlendirmesi yaptık; bu, yalnız olmadığınız anlamına gelir. Hazır olduğunuzda yolculuğumuza kaldığımız yerden devam edeceğiz.'],
+                        turuncu: ['Birlikte başlıyoruz', '#9a3412', 'Tablonuz özen ve takip gerektiriyor. Çalışmamıza başlıyoruz; ayrıca süreç boyunca bir uzman görüşünü de yanınıza almanızı öneriyoruz. Bu ikili destek, yolculuğunuzu güçlendirir.'],
+                        sari:    ['İyi bir başlangıç noktasındayız', '#a16207', 'Çalışmaya başlamak için uygun bir zemindeyiz. Süreçte ihtiyaç olursa uzman görüşü eklemeyi birlikte değerlendireceğiz.'],
+                        yesil:   ['Harika bir başlangıç', '#14532d', 'Değerlendirmemiz, birlikte çalışmaya başlamak için her şeyin uygun olduğunu gösteriyor. Hedeflerinize doğru küçük ve sağlam adımlarla ilerleyeceğiz.']
+                    };
+                    const vf = VERDICT_F[(last && last.verdict) || 'yesil'];
+                    const byV = arr.slice().sort((a, b) => a.v - b.v);
+                    const focus = byV.slice(0, 3);
+                    const strengths = arr.slice().sort((a, b) => b.v - a.v).filter(a => a.v >= 6).slice(0, 3);
+                    const strengthList = strengths.length ? strengths : arr.slice().sort((a, b) => b.v - a.v).slice(0, 3);
+                    const bar = v => { const c = v >= 7 ? '#15803d' : (v >= 4 ? '#ca8a04' : '#b91c1c'); return '<span style="display:inline-block;vertical-align:middle;width:110px;height:9px;background:#f1f5f9;border-radius:99px;overflow:hidden;margin:0 8px;"><i style="display:block;height:100%;width:' + (v * 10) + '%;background:' + c + ';"></i></span>'; };
+                    let impHtml = '';
+                    if (prev && prev.areas && last && last.areas) {
+                        let best = null;
+                        AREAS.forEach(a => {
+                            const d = areaVal(a.id) - Number(prev.areas[a.id] !== undefined ? prev.areas[a.id] : 5);
+                            if (best === null || d > best.d) best = { a, d };
+                        });
+                        if (best && best.d > 0) impHtml = '<div style="margin-top:10px;background:#ecfdf5;border:1px solid #a7f3d0;border-radius:10px;padding:10px 12px;">📈 <b>Gelişim notu:</b> Önceki değerlendirmenize göre en çok ilerleyen alanınız <b>' + escH((FRIEND[best.a.id] || [best.a.label])[0]) + '</b> (+' + best.d + '). Böyle devam edin.</div>';
+                    }
+                    let seyirHtml = '';
+                    if (hist.length > 1) {
+                        const seq = hist.slice().reverse();
+                        const avgs = seq.map(h => { let s2 = 0, n2 = 0; AREAS.forEach(a => { s2 += Number((h.areas || {})[a.id] !== undefined ? h.areas[a.id] : 5); n2++; }); return s2 / n2; });
+                        const W = 640, H = 90, pad = 14;
+                        const stepX = (W - pad * 2) / (seq.length - 1);
+                        const yOf = v => (H - pad) - (v / 10) * (H - pad * 2);
+                        const pts = avgs.map((v, i) => (pad + i * stepX).toFixed(1) + ',' + yOf(v).toFixed(1)).join(' ');
+                        const dots = seq.map((h, i) => '<circle cx="' + (pad + i * stepX).toFixed(1) + '" cy="' + yOf(avgs[i]).toFixed(1) + '" r="4.5" fill="#0f766e"/>').join('');
+                        const dSon = avgs[avgs.length - 1] - avgs[0];
+                        seyirHtml = '<h2>📈 Zaman içindeki gelişiminiz</h2>' +
+                            '<svg viewBox="0 0 ' + W + ' ' + H + '" style="width:100%;height:auto;display:block;">' +
+                            '<line x1="' + pad + '" y1="' + yOf(10) + '" x2="' + (W - pad) + '" y2="' + yOf(10) + '" stroke="#f1f5f9"/>' +
+                            '<line x1="' + pad + '" y1="' + yOf(5) + '" x2="' + (W - pad) + '" y2="' + yOf(5) + '" stroke="#e2e8f0" stroke-dasharray="3,3"/>' +
+                            '<line x1="' + pad + '" y1="' + yOf(0) + '" x2="' + (W - pad) + '" y2="' + yOf(0) + '" stroke="#e2e8f0"/>' +
+                            '<polyline points="' + pts + '" fill="none" stroke="#0f766e" stroke-width="2.5"/>' + dots + '</svg>' +
+                            '<p class="mut">Başlangıç: <b>' + avgs[0].toFixed(1) + '</b> · Bugün: <b>' + avgs[avgs.length - 1].toFixed(1) + '</b>' + (dSon > 0 ? ' · <b style="color:#15803d;">+' + dSon.toFixed(1) + ' puan ilerleme</b>' : '') + '</p>';
+                    }
+                    const svcTxt = (last && last.primary) ? '<h2>🧭 Birlikte planladığımız çalışma</h2><p style="margin:4px 0;">Size önerdiğimiz çalışma biçimi: <b>' + escH(SVC_NAME[last.primary] || last.primary) + '</b>' + (last.secondary ? ' · destekleyici: <b>' + escH(SVC_NAME[last.secondary] || last.secondary) + '</b>' : '') + '</p>' : '';
+                    const html = '<!DOCTYPE html><html lang="tr"><head><meta charset="utf-8"><title>İlerleme Özetim — ' + escH(client) + '</title>' +
+                        '<style>body{font-family:"Segoe UI",Arial,sans-serif;color:#1f2937;max-width:160mm;margin:0 auto;padding:14mm;font-size:11.5pt;line-height:1.6;}h1{font-size:17pt;color:#0f766e;margin:0 0 4px;}h2{font-size:12pt;color:#0f766e;margin:16px 0 6px;}.mut{color:#64748b;font-size:9pt;}@media print{body{padding:0;}}</style></head><body>' +
+                        '<h1>🌿 İlerleme Özetim</h1>' +
+                        '<p class="mut">Hazırlayan: Lalalık Paneli · ' + new Date().toLocaleDateString('tr-TR') + (client !== 'genel' ? ' · <b>' + escH(client) + '</b>' : '') + '</p>' +
+                        '<div style="background:#f0fdfa;border:2px solid ' + vf[1] + ';border-radius:12px;padding:12px 14px;margin-top:10px;">' +
+                        '<div style="font-size:13pt;font-weight:800;color:' + vf[1] + ';">' + vf[0] + '</div>' +
+                        '<p style="margin:6px 0 0;">' + vf[2] + '</p></div>' +
+                        '<h2>💪 Güçlü yönleriniz</h2>' + strengthList.map(a => '<div style="margin:4px 0;">' + escH((FRIEND[a.id] || [a.label])[0]) + bar(a.v) + '<b>' + a.v + '/10</b></div>').join('') +
+                        '<h2>🎯 Birlikte çalışacağımız alanlar</h2>' + focus.map(a => { const f = FRIEND[a.id] || [a.label, '']; return '<div style="margin:6px 0;background:#fff;border:1px solid #e2e8f0;border-radius:10px;padding:8px 12px;"><b>' + escH(f[0]) + '</b>' + bar(a.v) + '<b>' + a.v + '/10</b><br><span style="color:#475569;font-size:10.5pt;">💡 ' + escH(f[1]) + '</span></div>'; }).join('') +
+                        impHtml + seyirHtml + svcTxt +
+                        '<p class="mut" style="margin-top:20px;border-top:1px solid #cbd5e1;padding-top:8px;">Bu özet tıbbi bir değerlendirme ya da tanı değildir; birlikte çizdiğimiz yol haritasının o günkü fotoğrafıdır. Sorularınız olursa bir sonraki görüşmede konuşabiliriz.</p>' +
+                        '</body></html>';
+                    const w = window.open('', '_blank');
+                    if (!w) { if (typeof appAlert === 'function') appAlert('Açılır pencere engellendi; tarayıcı izinlerinden açılır pencerelere izin verin.', 'Sade Özet'); return; }
                     w.document.write(html);
                     w.document.close();
                     w.focus();
