@@ -36903,6 +36903,17 @@ ightarrow$ 🟣 Bilinmeyen)</span>
                 const item = list[idx]
                 if (!item) return
                 document.getElementById('t-menti').value = item.menti || ''
+                try {
+                    const __crm = document.getElementById('crm-client-select');
+                    if (__crm && item.menti) {
+                        let __found = false;
+                        for (let oi = 0; oi < __crm.options.length; oi++) { if (__crm.options[oi].value === item.menti) { __found = true; break; } }
+                        if (!__found) { const __o = document.createElement('option'); __o.value = item.menti; __o.text = item.menti; __crm.appendChild(__o); }
+                        __crm.value = item.menti;
+                        __crm.dispatchEvent(new Event('change'));
+                    }
+                    if (typeof window.triyajReloadForClient === 'function') window.triyajReloadForClient(true);
+                } catch (e) {}
                 document.getElementById('t-no').value = item.no || ''
                 document.getElementById('t-tarih').value = item.tarih || ''
                 document.getElementById('t-sure').value = item.sure || '50'
