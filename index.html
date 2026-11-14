@@ -4990,6 +4990,353 @@ html:not(.portal-mode) #lala-portal-view { display: none; }
             </div>
 
             
+            <!-- TRİYAJ & MÜDAHALE KARAR MATRİSİ -->
+            <div id="triyaj-panel" class="box soft" style="margin-bottom:14px;background:#fff;border:2px solid #0f766e;border-radius:10px;padding:12px 14px;">
+                <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;margin-bottom:8px;">
+                    <div>
+                        <span style="font-weight:800;color:#0f766e;font-size:14px;">🧭 Triyaj & Müdahale Karar Matrisi</span>
+                        <p style="margin:2px 0 0;font-size:11.5px;color:#475569;line-height:1.45;">İlk görüşmede 4 adımı sırayla işaretleyin; matris, danışanın hayat haritasını çıkarır ve hangi danışmanlık hizmetiyle ilerlemeniz gerektiğini <b>gerekçesiyle</b> önerir. Deneyim gerektirmez: kırmızı = dur, sarı = dikkat, yeşil = uygun.</p>
+                    </div>
+                    <button type="button" onclick="triyajSifirla()" class="sim-btn secondary" style="font-size:11px;padding:3px 8px;">↺ Sıfırla</button>
+                </div>
+
+                <details open style="margin-bottom:8px;">
+                    <summary style="cursor:pointer;font-weight:700;font-size:12.5px;color:#b91c1c;padding:4px 0;">Adım 1 · Güvenlik Triyajı (Kırmızı Bayraklar) <span style="font-weight:400;font-size:11px;color:#64748b;">— herhangi biri “evet” ise koçluk seansı başlamaz</span></summary>
+                    <div id="trj-red-flags" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:6px;margin-top:6px;">
+                        <label style="display:flex;gap:7px;align-items:flex-start;font-size:12px;background:#fef2f2;border:1px solid #fecaca;border-radius:7px;padding:7px 9px;cursor:pointer;"><input type="checkbox" class="trj-red" style="margin-top:2px;"> <span><b>Kendine zarar:</b> Yaşamına son verme ya da kendine zarar düşüncesi, planı ya da geçmiş girişimi var.</span></label>
+                        <label style="display:flex;gap:7px;align-items:flex-start;font-size:12px;background:#fef2f2;border:1px solid #fecaca;border-radius:7px;padding:7px 9px;cursor:pointer;"><input type="checkbox" class="trj-red" style="margin-top:2px;"> <span><b>Başkasına zarar:</b> Birine zarar verme düşüncesi, planı veya kontrol edemediği öfke nöbetleri var.</span></label>
+                        <label style="display:flex;gap:7px;align-items:flex-start;font-size:12px;background:#fef2f2;border:1px solid #fecaca;border-radius:7px;padding:7px 9px;cursor:pointer;"><input type="checkbox" class="trj-red" style="margin-top:2px;"> <span><b>Gerçeklikten kopuş:</b> Sanrı, varsanı (ses/görü), aşırı şüphecilik veya dağınık konuşma gözlemleniyor.</span></label>
+                        <label style="display:flex;gap:7px;align-items:flex-start;font-size:12px;background:#fef2f2;border:1px solid #fecaca;border-radius:7px;padding:7px 9px;cursor:pointer;"><input type="checkbox" class="trj-red" style="margin-top:2px;"> <span><b>Madde/alkol:</b> Kullanım günlük yaşamı bozuyor, yoksunluk belirtisi var veya görüşmeye etkisi altında gelmiş.</span></label>
+                        <label style="display:flex;gap:7px;align-items:flex-start;font-size:12px;background:#fef2f2;border:1px solid #fecaca;border-radius:7px;padding:7px 9px;cursor:pointer;"><input type="checkbox" class="trj-red" style="margin-top:2px;"> <span><b>Şiddet/istismar riski:</b> Kendisi ya da evdeki bir çocuk şiddet, istismar ya da ihmal riski altında.</span></label>
+                        <label style="display:flex;gap:7px;align-items:flex-start;font-size:12px;background:#fef2f2;border:1px solid #fecaca;border-radius:7px;padding:7px 9px;cursor:pointer;"><input type="checkbox" class="trj-red" style="margin-top:2px;"> <span><b>Temel bakım çöküşü:</b> 2 haftadır neredeyse hiç uyuyamıyor, yemek yiyemiyor ya da yataktan çıkamıyor.</span></label>
+                    </div>
+                    <div id="trj-crisis-box" style="display:none;margin-top:8px;background:#7f1d1d;color:#fff;border-radius:8px;padding:10px 12px;font-size:12px;line-height:1.55;">
+                        <b>🛑 GÜVENLİK ÖNCE GELİR — koçluk/mentörlük seansı başlatmayın.</b><br>
+                        1) Danışanı yalnız bırakmayın; sakin ve yargılamadan eşlik edin. 2) Aşağıdaki kriz araçlarını kullanın. 3) Aynı gün uzmana (psikiyatrist/psikolog) yönlendirin ve yönlendirmeyi belgelendirin. Acil durumda <b>112</b>, aile içi şiddet/istismarda <b>183</b>, randevu için <b>182 (MHRS)</b>.
+                        <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:8px;">
+                            <button type="button" onclick="document.getElementById('tipp-modal').style.display='flex';" style="background:#fff;color:#7f1d1d;border:0;border-radius:6px;padding:5px 10px;font-size:11.5px;font-weight:800;cursor:pointer;">🚨 TIPP Kriz Aracını Aç</button>
+                            <button type="button" onclick="var b=document.getElementById('btn-open-referral');if(b)b.click();" style="background:#fecaca;color:#7f1d1d;border:0;border-radius:6px;padding:5px 10px;font-size:11.5px;font-weight:800;cursor:pointer;">🏥 Klinik Sevk Mektubu Hazırla</button>
+                        </div>
+                    </div>
+                </details>
+
+                <details open style="margin-bottom:8px;">
+                    <summary style="cursor:pointer;font-weight:700;font-size:12.5px;color:#1d4ed8;padding:4px 0;">Adım 2 · Hayat Haritası (10 alan, 0–10) <span style="font-weight:400;font-size:11px;color:#64748b;">— danışanla birlikte puanlayın; en düşük alanlar rotayı belirler</span></summary>
+                    <div id="trj-areas" style="margin-top:6px;display:flex;flex-direction:column;gap:5px;"></div>
+                    <div id="trj-map-summary" style="margin-top:6px;font-size:11.5px;color:#334155;background:#eff6ff;border:1px solid #bfdbfe;border-radius:7px;padding:6px 9px;">Puanlama yapıldıkça en kırılgan 3 alan burada özetlenir.</div>
+                </details>
+
+                <details open style="margin-bottom:8px;">
+                    <summary style="cursor:pointer;font-weight:700;font-size:12.5px;color:#7c3aed;padding:4px 0;">Adım 3 · Profil Soruları (5 kısa soru)</summary>
+                    <div class="g2" style="gap:10px;margin-top:6px;">
+                        <div>
+                            <label class="label">1. Yaş grubu</label>
+                            <select id="trj-yas" style="width:100%;padding:6px;border:1px solid var(--line);border-radius:6px;font:inherit;font-size:12px;">
+                                <option value="">— Seçin —</option>
+                                <option value="cocuk-ergen">12–17 (çocuk/ergen)</option>
+                                <option value="genc">18–24 (genç yetişkin/öğrenci)</option>
+                                <option value="yetiskin">25–64 (yetişkin)</option>
+                                <option value="yasli">65+ (yaşlı)</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="label">2. Ana başvuru nedeni</label>
+                            <select id="trj-neden" style="width:100%;padding:6px;border:1px solid var(--line);border-radius:6px;font:inherit;font-size:12px;">
+                                <option value="">— Seçin —</option>
+                                <option value="sinav">Sınav / akademik başarı / çalışma düzeni</option>
+                                <option value="duygu">Kaygı, çökkünlük, stres, duygu dalgalanması</option>
+                                <option value="iliski">Evlilik / partner / ilişki çatışması</option>
+                                <option value="aile">Aile içi çatışma, ergenlik, ebeveynlik</option>
+                                <option value="is">İş stresi, tükenmişlik, kariyer kararı</option>
+                                <option value="liderlik">Yöneticilik, ekip liderliği, kurumsal (sponsorlu)</option>
+                                <option value="anlam">Anlam arayışı, maneviyat, değerler</option>
+                                <option value="aliskanlik">Hedef, alışkanlık, yaşam düzeni tasarımı</option>
+                                <option value="klinik">Tanı konmuş ya da klinik görünümlü tablo</option>
+                                <option value="belirsiz">Belirsiz / karmaşık / henüz adlandırılamıyor</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="label">3. Şikâyet ne kadar süredir var?</label>
+                            <select id="trj-sure" style="width:100%;padding:6px;border:1px solid var(--line);border-radius:6px;font:inherit;font-size:12px;">
+                                <option value="">— Seçin —</option>
+                                <option value="yeni">2 haftadan az (yeni, durumsal)</option>
+                                <option value="kisa">2–8 hafta</option>
+                                <option value="orta">2–6 ay</option>
+                                <option value="uzun">6 aydan uzun / yıllardır</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="label">4. Günlük işlevselliğe etkisi</label>
+                            <select id="trj-etki" style="width:100%;padding:6px;border:1px solid var(--line);border-radius:6px;font:inherit;font-size:12px;">
+                                <option value="">— Seçin —</option>
+                                <option value="hafif">Hafif: iş/okul/aile sürüyor, zorlanıyor</option>
+                                <option value="orta">Orta: bazı sorumluluklar aksıyor</option>
+                                <option value="agir">Ağır: iş/okul/ilişkiler belirgin bozuldu</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="label">5. Daha önce aldığı en güçlü destek</label>
+                            <select id="trj-gecmis" style="width:100%;padding:6px;border:1px solid var(--line);border-radius:6px;font:inherit;font-size:12px;">
+                                <option value="">— Seçin —</option>
+                                <option value="yok">Hiç almadı</option>
+                                <option value="kocluk">Koçluk / mentörlük aldı</option>
+                                <option value="psikoterapi">Psikoterapi aldı / alıyor</option>
+                                <option value="psikiyatri">Psikiyatri takibi / ilaç kullanıyor</option>
+                            </select>
+                        </div>
+                    </div>
+                </details>
+
+                <div style="display:flex;gap:8px;flex-wrap:wrap;margin:6px 0 10px;">
+                    <button type="button" onclick="triyajDegerlendir()" class="sim-btn" style="background:#0f766e;font-size:12.5px;padding:7px 16px;">🧮 Matrisi Değerlendir</button>
+                    <button type="button" onclick="triyajOzetAktar()" class="sim-btn secondary" style="font-size:11.5px;padding:5px 12px;" title="Triyaj özetini aşağıdaki seans formunun gündem alanına aktarır">📋 Özeti Gündeme Aktar</button>
+                </div>
+
+                <div id="trj-result" style="display:none;"></div>
+
+                <details style="margin-top:10px;">
+                    <summary style="cursor:pointer;font-weight:700;font-size:12px;color:#475569;padding:4px 0;">📖 Başvuru Tablosu: 13 hizmet, hangi durumda kullanılır? (yeni danışmanlar için)</summary>
+                    <div style="overflow-x:auto;margin-top:6px;">
+                    <table style="width:100%;border-collapse:collapse;font-size:11.5px;line-height:1.45;">
+                        <thead><tr style="background:#f1f5f9;text-align:left;">
+                            <th style="padding:6px 8px;border:1px solid #cbd5e1;">Hizmet</th>
+                            <th style="padding:6px 8px;border:1px solid #cbd5e1;">Ne zaman seçilir?</th>
+                            <th style="padding:6px 8px;border:1px solid #cbd5e1;">Ne zaman seçilMEZ?</th>
+                        </tr></thead>
+                        <tbody>
+                            <tr><td style="padding:5px 8px;border:1px solid #e2e8f0;"><b>🧠 Genel BDT & Bireysel Mentörlük</b></td><td style="padding:5px 8px;border:1px solid #e2e8f0;">Nedeni net olmayan günlük stres, düşünce-duygu-davranış çalışması; emin olamadığınızda güvenli başlangıç noktası.</td><td style="padding:5px 8px;border:1px solid #e2e8f0;">Kırmızı bayrak varsa, tablo açıkça başka hizmeti gösteriyorsa.</td></tr>
+                            <tr><td style="padding:5px 8px;border:1px solid #e2e8f0;"><b>🌱 Ergen & Aile</b></td><td style="padding:5px 8px;border:1px solid #e2e8f0;">12–17 yaş; ergenlik çatışmaları, okul uyumu, aile içi gerilim, sınav kaygısı (ergen odaklı).</td><td style="padding:5px 8px;border:1px solid #e2e8f0;">18+ yaş; sorun esas olarak çift ilişkisiyse → İlişki hizmeti.</td></tr>
+                            <tr><td style="padding:5px 8px;border:1px solid #e2e8f0;"><b>📚 Öğrenci & Sınav Koçluğu</b></td><td style="padding:5px 8px;border:1px solid #e2e8f0;">LGS/YKS/üniversite sınavları, çalışma programı, akademik erteleme, hedef ve motivasyon.</td><td style="padding:5px 8px;border:1px solid #e2e8f0;">Ana konu akademik değil de duygusal/klinikse → Yetişkin veya Hazır Klinik.</td></tr>
+                            <tr><td style="padding:5px 8px;border:1px solid #e2e8f0;"><b>💼 Yetişkin & Kariyer Psikolojisi</b></td><td style="padding:5px 8px;border:1px solid #e2e8f0;">25+ yaş; iş stresi, kaygı, tükenmişlik, yaşam geçişleri (taşınma, ayrılık, kayıp), karar süreçleri.</td><td style="padding:5px 8px;border:1px solid #e2e8f0;">Ağır klinik tablo şüphesinde tek başına → Hazır Klinik + sevk.</td></tr>
+                            <tr><td style="padding:5px 8px;border:1px solid #e2e8f0;"><b>👔 Yönetici & Liderlik (VUCA)</b></td><td style="padding:5px 8px;border:1px solid #e2e8f0;">Yöneticilik, ekip liderliği, rol geçişi, delegasyon, kurumsal sponsorlu görüşmeler, belirsizlik yönetimi.</td><td style="padding:5px 8px;border:1px solid #e2e8f0;">Konu liderlik değil kişisel/klinikse → Yetişkin.</td></tr>
+                            <tr><td style="padding:5px 8px;border:1px solid #e2e8f0;"><b>🎓 Mentör Yetiştirme & Süpervizyon</b></td><td style="padding:5px 8px;border:1px solid #e2e8f0;">Danışan değil meslektaş: koç/mentör adaylarının eğitimi, vaka süpervizyonu.</td><td style="padding:5px 8px;border:1px solid #e2e8f0;">Danışan görüşmelerinde kullanılmaz.</td></tr>
+                            <tr><td style="padding:5px 8px;border:1px solid #e2e8f0;"><b>🧭 Yaşam Koçluğu & Alışkanlık</b></td><td style="padding:5px 8px;border:1px solid #e2e8f0;">Klinik bulgu yok; hedef netleştirme, alışkanlık tasarımı, yaşam çarkı, üretkenlik, GROW temelli ilerleme.</td><td style="padding:5px 8px;border:1px solid #e2e8f0;">Belirgin kaygı/çökkünlük varsa → önce BDT hattı.</td></tr>
+                            <tr><td style="padding:5px 8px;border:1px solid #e2e8f0;"><b>❤️ İlişki & Çift (Gottman)</b></td><td style="padding:5px 8px;border:1px solid #e2e8f0;">Evlilik/partner çatışması, iletişim, güven, ayrılık kararı, nişanlılık değerlendirmesi.</td><td style="padding:5px 8px;border:1px solid #e2e8f0;">Şiddet/istismar varsa çift çalışması yapılmaz → kriz protokolü.</td></tr>
+                            <tr><td style="padding:5px 8px;border:1px solid #e2e8f0;"><b>✨ 99 Esmâ & Manevi BDT</b></td><td style="padding:5px 8px;border:1px solid #e2e8f0;">Danışan manevi çerçeve <b>kendisi talep ederse</b>; anlam krizi, değerler, tevekkül-çaba dengesi.</td><td style="padding:5px 8px;border:1px solid #e2e8f0;">Danışan talep etmedikçe açılmaz; kriz durumunda tek başına yetersizdir.</td></tr>
+                            <tr><td style="padding:5px 8px;border:1px solid #e2e8f0;"><b>🕊️ Lalalık Katmanı</b></td><td style="padding:5px 8px;border:1px solid #e2e8f0;">Mizaç ve terbiye perspektifiyle derinleşme; ana hizmetin üstüne destek katmanı.</td><td style="padding:5px 8px;border:1px solid #e2e8f0;">Tek başına birincil hizmet olarak değil.</td></tr>
+                            <tr><td style="padding:5px 8px;border:1px solid #e2e8f0;"><b>✍️ BKRM Görüşme Paneli</b></td><td style="padding:5px 8px;border:1px solid #e2e8f0;">BKRM ekolüyle çalışanlar için meşk defteri, sığınak protokolü ve 16 haftalık akış.</td><td style="padding:5px 8px;border:1px solid #e2e8f0;">BKRM eğitimi almadıysanız.</td></tr>
+                            <tr><td style="padding:5px 8px;border:1px solid #e2e8f0;"><b>🩺 Hazır Klinik Seans</b></td><td style="padding:5px 8px;border:1px solid #e2e8f0;">Klinik görünüm belirgin (kaygı, depresif tablo, OKB, yas vb.); 210 protokollük yapılandırılmış seanslar.</td><td style="padding:5px 8px;border:1px solid #e2e8f0;">Tanı koymak için değil, protokol uygulamak içindir; tanı ve ilaç uzman işidir.</td></tr>
+                            <tr><td style="padding:5px 8px;border:1px solid #e2e8f0;"><b>🌐 Bütüncül Terapi</b></td><td style="padding:5px 8px;border:1px solid #e2e8f0;">Kronik ve karmaşık örüntüler, tekrarlayan ilişki/kişilik temaları; şema ve varoluşçu çalışma gerektiğinde.</td><td style="padding:5px 8px;border:1px solid #e2e8f0;">İlk görüşme, basit durumsal sorun → önce Genel BDT.</td></tr>
+                        </tbody>
+                    </table>
+                    </div>
+                    <p style="font-size:11px;color:#64748b;margin:8px 0 0;">Altın kural: Koçluk/mentörlük <b>işlevsel kişilerin gelişimini</b> hızlandırır; klinik tabloyu tedavi etmez. Şüphede kaldığınızda danışanı kaybetmek pahasına sevk edin — doğru sevk, en iyi hizmettir.</p>
+                </details>
+            </div>
+
+            <script>
+            (function () {
+                const TRJ_KEY = 'lala_triyaj_state_v1';
+                const AREAS = [
+                    { id: 'uyku',   label: '😴 Uyku & Fiziksel Sağlık',      svc: 'hazirklinik', note: 'Uyku/temel beden düzeni 2+ haftadır bozuksa tıbbi değerlendirme önerilir; klinik protokoller destekler.' },
+                    { id: 'duygu',  label: '💗 Duygusal Denge',              svc: 'yetiskin',    note: 'Kaygı/çökkünlük baskınsa BDT hattı (Yetişkin veya Hazır Klinik) ana rota olur.' },
+                    { id: 'aile',   label: '🏠 Aile İlişkileri',             svc: 'ergen',       note: 'Aile içi çatışma baskınsa Ergen & Aile modülü (aile oturumu) devreye girer.' },
+                    { id: 'iliski', label: '💑 Evlilik / Partner İlişkisi',  svc: 'iliski',      note: 'Çift eksenli sorunsa İlişki & Çift (Gottman) hizmeti önerilir; şiddet varsa çift çalışması yapılmaz.' },
+                    { id: 'is',     label: '💼 İş & Kariyer',                svc: 'yonetici',    note: 'İş/liderlik ekseni baskınsa Yönetici & Liderlik veya Yetişkin & Kariyer öne çıkar.' },
+                    { id: 'egitim', label: '📚 Eğitim & Sınav',              svc: 'ogrenci',     note: 'Sınav/akademik rota baskınsa Öğrenci & Sınav Koçluğu en verimli hizmettir.' },
+                    { id: 'sosyal', label: '👥 Sosyal Çevre & Arkadaşlık',   svc: 'yasamkoc',    note: 'Sosyal izolasyon gelişim hedefiyle birlikte Yaşam Koçluğu planına taşınabilir.' },
+                    { id: 'maddi',  label: '💰 Maddi Güvence',               svc: 'genel',       note: 'Maddi kriz danışmanlık kapsamı dışında olabilir; sosyal hizmet/hukuk yönlendirmesi değerlendirin.' },
+                    { id: 'anlam',  label: '🕊️ Anlam & Maneviyat',           svc: 'esma',        note: 'Danışan manevi çerçeve istiyorsa 99 Esmâ + Lalalık Katmanı destekleyici olur.' },
+                    { id: 'duzen',  label: '🧩 Günlük Düzen & Alışkanlıklar',svc: 'yasamkoc',    note: 'Düzen/alışkanlık odaklıysa Yaşam Koçluğu (yaşam çarkı + 21 günlük zincir) idealdir.' }
+                ];
+                const SVC_NAME = {
+                    genel: '🧠 Genel BDT & Bireysel Mentörlük', ergen: '🌱 Ergen & Aile Danışmanlığı',
+                    ogrenci: '📚 Öğrenci & Akademik Sınav Koçluğu', yetiskin: '💼 Yetişkin & Kariyer Psikolojisi',
+                    yonetici: '👔 Yönetici & Liderlik Koçluğu', yetistirme: '🎓 Mentör Yetiştirme & Süpervizyon',
+                    yasamkoc: '🧭 Yaşam Koçluğu & Alışkanlık Tasarımı', iliski: '❤️ İlişki & Çift Psikolojisi',
+                    esma: '✨ 99 Esmâ & Manevi BDT', katman: '🕊️ Lalalık Katmanı', bkrm: '✍️ BKRM Görüşme Paneli',
+                    hazirklinik: '🩺 Hazır Klinik Seans', butuncul: '🌐 Bütüncül Terapi'
+                };
+
+                function loadState() {
+                    try { return JSON.parse(localStorage.getItem(TRJ_KEY)) || {}; } catch (e) { return {}; }
+                }
+                function saveState() {
+                    const st = { areas: {}, red: [], yas: val('trj-yas'), neden: val('trj-neden'), sure: val('trj-sure'), etki: val('trj-etki'), gecmis: val('trj-gecmis') };
+                    document.querySelectorAll('.trj-red').forEach((c, i) => { if (c.checked) st.red.push(i); });
+                    AREAS.forEach(a => { const el = document.getElementById('trj-a-' + a.id); if (el) st.areas[a.id] = el.value; });
+                    try { localStorage.setItem(TRJ_KEY, JSON.stringify(st)); } catch (e) {}
+                }
+                function val(id) { const el = document.getElementById(id); return el ? el.value : ''; }
+                function setVal(id, v) { const el = document.getElementById(id); if (el && v) el.value = v; }
+                function areaColor(v) { return v <= 3 ? '#dc2626' : (v <= 6 ? '#d97706' : '#16a34a'); }
+
+                function renderAreas() {
+                    const host = document.getElementById('trj-areas');
+                    if (!host) return;
+                    host.innerHTML = AREAS.map(a => `
+                        <div style="display:flex;align-items:center;gap:10px;font-size:12px;">
+                            <span style="flex:0 0 210px;font-weight:600;color:#334155;">${a.label}</span>
+                            <input type="range" id="trj-a-${a.id}" min="0" max="10" value="5" style="flex:1;accent-color:#0f766e;" oninput="triyajAreaInput('${a.id}')">
+                            <b id="trj-a-out-${a.id}" style="flex:0 0 34px;text-align:right;color:#d97706;">5</b>
+                        </div>`).join('');
+                    const st = loadState();
+                    if (st.areas) AREAS.forEach(a => { if (st.areas[a.id] !== undefined) { const el = document.getElementById('trj-a-' + a.id); if (el) el.value = st.areas[a.id]; } });
+                    AREAS.forEach(a => triyajAreaInput(a.id, true));
+                    if (st.red) st.red.forEach(i => { const c = document.querySelectorAll('.trj-red')[i]; if (c) c.checked = true; });
+                    ['yas', 'neden', 'sure', 'etki', 'gecmis'].forEach(k => setVal('trj-' + k, st[k]));
+                    updateCrisisBox();
+                    document.querySelectorAll('.trj-red').forEach(c => c.addEventListener('change', () => { updateCrisisBox(); saveState(); }));
+                    ['trj-yas', 'trj-neden', 'trj-sure', 'trj-etki', 'trj-gecmis'].forEach(id => { const el = document.getElementById(id); if (el) el.addEventListener('change', saveState); });
+                }
+
+                window.triyajAreaInput = function (id, silent) {
+                    const el = document.getElementById('trj-a-' + id);
+                    const out = document.getElementById('trj-a-out-' + id);
+                    if (!el || !out) return;
+                    out.textContent = el.value;
+                    out.style.color = areaColor(Number(el.value));
+                    updateMapSummary();
+                    if (!silent) saveState();
+                };
+
+                function lowestAreas() {
+                    return AREAS.map(a => ({ ...a, v: Number((document.getElementById('trj-a-' + a.id) || {}).value || 5) }))
+                        .sort((x, y) => x.v - y.v);
+                }
+
+                function updateMapSummary() {
+                    const box = document.getElementById('trj-map-summary');
+                    if (!box) return;
+                    const low3 = lowestAreas().slice(0, 3);
+                    box.innerHTML = '🗺️ <b>Hayat haritası — en kırılgan 3 alan:</b> ' + low3.map(a =>
+                        `<span style="color:${areaColor(a.v)};font-weight:700;">${a.label} (${a.v}/10)</span>`).join(' · ') +
+                        '<br><span style="font-size:11px;color:#64748b;">💡 Yönlendirme ipucu: ' + low3[0].note + '</span>';
+                }
+
+                function updateCrisisBox() {
+                    const any = [...document.querySelectorAll('.trj-red')].some(c => c.checked);
+                    const box = document.getElementById('trj-crisis-box');
+                    if (box) box.style.display = any ? 'block' : 'none';
+                }
+
+                window.triyajDegerlendir = function () {
+                    saveState();
+                    const res = document.getElementById('trj-result');
+                    if (!res) return;
+
+                    // Kırmızı bayrak → kriz sonucu
+                    if ([...document.querySelectorAll('.trj-red')].some(c => c.checked)) {
+                        res.style.display = 'block';
+                        res.innerHTML = `<div style="background:#7f1d1d;color:#fff;border-radius:8px;padding:12px 14px;font-size:12.5px;line-height:1.6;">
+                            <b>🛑 Matris sonucu: KRİZ — koçluk hizmeti başlatılmaz.</b><br>
+                            İşaretlediğiniz kırmızı bayrak(lar) koçluk/mentörlük kapsamı dışındadır. Adım 1'deki kriz protokolünü izleyin: TIPP aracı + aynı gün uzmana sevk (Klinik Sevk Mektubu hazır). Danışan stabil hale geldiğinde tablo yeniden değerlendirilir.</div>`;
+                        res.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+                        return;
+                    }
+
+                    const yas = val('trj-yas'), neden = val('trj-neden'), sure = val('trj-sure'), etki = val('trj-etki'), gecmis = val('trj-gecmis');
+                    if (!yas || !neden || !sure || !etki || !gecmis) {
+                        res.style.display = 'block';
+                        res.innerHTML = '<div style="background:#fef3c7;border:1px solid #fde68a;color:#92400e;border-radius:8px;padding:10px 12px;font-size:12px;">⚠️ Lütfen Adım 3\'teki 5 sorunun tamamını yanıtlayın; matris ancak tam profille güvenilir öneri üretir.</div>';
+                        return;
+                    }
+
+                    // Klinik şüphe skoru
+                    let klinik = 0;
+                    if (etki === 'agir') klinik += 2; else if (etki === 'orta') klinik += 1;
+                    if (sure === 'uzun') klinik += 2; else if (sure === 'orta') klinik += 1;
+                    if (gecmis === 'psikiyatri') klinik += 2; else if (gecmis === 'psikoterapi') klinik += 1;
+
+                    const reasons = [];
+                    let primary, why;
+                    if (klinik >= 4) {
+                        primary = (neden === 'anlam') ? 'butuncul' : 'hazirklinik';
+                        why = 'Tablo uzun süredir var, işlevselliği ağır etkiliyor ve/veya psikiyatri geçmişi var. Bu, koçluğun tek başına yeterli olamayacağı klinik bir görünümdür; yapılandırılmış klinik protokollerle ilerleyin ve uzman değerlendirmesini şart koşun.';
+                    } else {
+                        const map = {
+                            sinav: () => (yas === 'cocuk-ergen') ? ['ergen', 'Başvuru sınav odaklı ve yaş 12–17: ergen hem akademik hem aile eksenini kapsar.'] : ['ogrenci', 'Ana konu sınav/akademik performans: Öğrenci & Sınav Koçluğu tam bu iş için tasarlandı (program, erteleme, sınav kaygısı).'],
+                            duygu: () => (yas === 'cocuk-ergen') ? ['ergen', '12–17 yaşta duygusal konular aile sistemiyle birlikte ele alınır; Ergen & Aile hizmeti uygun.'] : ['yetiskin', 'Kaygı/stres/duygu düzenleme ana tema: Yetişkin BDT hattı düşünce-duygu-davranış çalışması için ana rota.'],
+                            iliski: () => ['iliski', 'Sorunun merkezi çift/ilişki: Gottman temelli İlişki & Çift hizmeti doğrudan bu alanı çalışır.'],
+                            aile: () => ['ergen', 'Aile içi çatışma/ergenlik ekseni: Ergen & Aile Danışmanlığı aile oturumu modülünü içerir.'],
+                            is: () => ['yetiskin', 'İş stresi/tükenmişlik/kariyer kararı: Yetişkin & Kariyer Psikolojisi bu geçişler için yapılandırıldı.'],
+                            liderlik: () => ['yonetici', 'Yöneticilik/ekip/kurumsal bağlam: Yönetici & Liderlik (VUCA) hizmeti rol geçişi ve liderlik araçlarını içerir.'],
+                            anlam: () => ['esma', 'Danışan anlam/maneviyat ekseninde çalışmak istiyor: 99 Esmâ & Manevi BDT, isteğe bağlı manevi çerçeveyi bilimsel BDT ile birleştirir.'],
+                            aliskanlik: () => ['yasamkoc', 'Hedef/alışkanlık/yaşam düzeni: klinik bulgu yokken GROW temelli Yaşam Koçluğu en verimli rota.'],
+                            klinik: () => ['hazirklinik', 'Tanılı/klinik görünümlü tablo: 210 protokollük Hazır Klinik yapılandırılmış seans sunar; uzman iş birliği şart.'],
+                            belirsiz: () => ['genel', 'Tablo henüz adlandırılamıyor: Genel BDT çatısıyla 2–3 seans formülasyon kurun; tablo netleştikçe hizmeti değiştirin.']
+                        };
+                        [primary, why] = (map[neden] || map.belirsiz)();
+                    }
+
+                    // Hayat haritasından ikincil öneri
+                    const low = lowestAreas()[0];
+                    let secondary = null;
+                    if (low.v <= 4 && low.svc !== primary) {
+                        secondary = low.svc;
+                        reasons.push(`Hayat haritasında en düşük alan <b>${low.label} (${low.v}/10)</b> → ${low.note}`);
+                    }
+                    if (primary === 'esma') { secondary = secondary || 'katman'; }
+                    if (neden === 'belirsiz') reasons.push('2–3 seans sonra bu matrisi yeniden çalıştırın; netleşen tabloyla hizmeti güncelleyin.');
+
+                    let verdict, verdictStyle;
+                    if (klinik >= 4) {
+                        verdict = '🟠 Karar: KLİNİK ÖNCELİK — koçluk, uzman iş birliğiyle birlikte yürütülmeli';
+                        verdictStyle = 'background:#9a3412;color:#fff;';
+                    } else if (klinik === 3) {
+                        verdict = '🟡 Karar: DİKKAT — koçluk başlayabilir ama uzman değerlendirmesi önerilir';
+                        verdictStyle = 'background:#a16207;color:#fff;';
+                    } else {
+                        verdict = '🟢 Karar: UYGUN — koçluk/mentörlük başlatılabilir';
+                        verdictStyle = 'background:#14532d;color:#fff;';
+                    }
+
+                    const referralNote = (klinik >= 3)
+                        ? `<div style="margin-top:8px;background:#fff7ed;border:1px solid #fdba74;color:#9a3412;border-radius:7px;padding:8px 10px;font-size:11.5px;">🏥 <b>Sevk notu:</b> Psikiyatrist/psikolog değerlendirmesi önerilir. Üst şeritteki <b>🏥 Klinik Sevk</b> düğmesiyle mektubu hazırlayın; sevk, koçluğu bırakmak değil, güvenlik ağı kurmaktır.</div>`
+                        : '';
+
+                    res.style.display = 'block';
+                    res.innerHTML = `
+                        <div style="border-radius:8px;padding:10px 12px;${verdictStyle}font-size:12.5px;font-weight:700;">${verdict}</div>
+                        <div style="margin-top:8px;background:#f0fdfa;border:2px solid #0f766e;border-radius:8px;padding:10px 12px;">
+                            <div style="font-size:11px;font-weight:800;color:#0f766e;text-transform:uppercase;letter-spacing:.04em;">Birincil önerilen hizmet</div>
+                            <div style="font-size:15px;font-weight:800;color:#134e4a;margin:4px 0;">${SVC_NAME[primary]}</div>
+                            <p style="margin:0 0 8px;font-size:12px;color:#334155;line-height:1.55;">${why}</p>
+                            <button type="button" onclick="triyajUygula('${primary}')" class="sim-btn" style="background:#0f766e;font-size:12px;padding:6px 14px;">✅ Bu Hizmeti Seansa Uygula</button>
+                            ${secondary ? `<div style="margin-top:8px;font-size:12px;color:#0f766e;"><b>Destekleyici:</b> ${SVC_NAME[secondary]} — <a href="javascript:void(0)" onclick="triyajUygula('${secondary}')" style="color:#0f766e;font-weight:700;">bunu uygula</a></div>` : ''}
+                        </div>
+                        ${reasons.length ? `<div style="margin-top:8px;background:#f8fafc;border:1px solid #e2e8f0;border-radius:7px;padding:8px 10px;font-size:11.5px;color:#475569;line-height:1.6;">${reasons.map(r => '• ' + r).join('<br>')}</div>` : ''}
+                        ${referralNote}`;
+                    res.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+                };
+
+                window.triyajUygula = function (svcKey) {
+                    if (typeof applySeansServiceDesign === 'function') applySeansServiceDesign(svcKey);
+                    const box = document.getElementById('seans-service-box');
+                    if (box) box.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                    if (typeof showToast === 'function') showToast('Hizmet şeması uygulandı: ' + (SVC_NAME[svcKey] || svcKey), 'success');
+                };
+
+                window.triyajOzetAktar = function () {
+                    const gundem = document.getElementById('t-gundem');
+                    if (!gundem) return;
+                    const low3 = lowestAreas().slice(0, 3);
+                    const redN = [...document.querySelectorAll('.trj-red')].filter(c => c.checked).length;
+                    const lines = [
+                        '— TRİYAJ ÖZETİ (' + new Date().toLocaleDateString('tr-TR') + ') —',
+                        'Kırmızı bayrak: ' + (redN ? redN + ' adet (KRİZ protokolü uygulandı)' : 'Yok'),
+                        'Hayat haritası (kırılgan 3): ' + low3.map(a => a.label.replace(/^[^ ]+ /, '') + ' ' + a.v + '/10').join(', '),
+                        'Profil: yaş=' + (val('trj-yas') || '-') + ', neden=' + (val('trj-neden') || '-') + ', süre=' + (val('trj-sure') || '-') + ', etki=' + (val('trj-etki') || '-') + ', geçmiş=' + (val('trj-gecmis') || '-')
+                    ];
+                    gundem.value = (gundem.value ? gundem.value.trim() + '\n\n' : '') + lines.join('\n');
+                    if (typeof showToast === 'function') showToast('Triyaj özeti gündem alanına eklendi.', 'success');
+                };
+
+                window.triyajSifirla = function () {
+                    try { localStorage.removeItem(TRJ_KEY); } catch (e) {}
+                    document.querySelectorAll('.trj-red').forEach(c => { c.checked = false; });
+                    AREAS.forEach(a => { const el = document.getElementById('trj-a-' + a.id); if (el) el.value = 5; triyajAreaInput(a.id, true); });
+                    ['trj-yas', 'trj-neden', 'trj-sure', 'trj-etki', 'trj-gecmis'].forEach(id => setVal(id, ''));
+                    const res = document.getElementById('trj-result');
+                    if (res) { res.style.display = 'none'; res.innerHTML = ''; }
+                    updateCrisisBox();
+                    if (typeof showToast === 'function') showToast('Triyaj matrisi sıfırlandı.', 'info');
+                };
+
+                renderAreas();
+            })();
+            </script>
+
             <!-- DANIŞMANLIK HİZMETİ SEÇİM KUTUSU (DİNAMİK TASARIM MOTORU) -->
             <div id="seans-service-box" style="background:linear-gradient(135deg, #eff6ff, #f8fafc);border:1.5px solid #bfdbfe;border-radius:10px;padding:12px 14px;margin-bottom:14px;transition:all 0.25s ease;">
                 <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;">
