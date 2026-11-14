@@ -5179,10 +5179,30 @@ html:not(.portal-mode) #lala-portal-view { display: none; }
                     if (!host) return;
                     const arr = loadHistoryArr();
                     if (!arr.length) { host.innerHTML = ''; return; }
+                    let spark = '';
+                    if (arr.length > 1) {
+                        const seq = arr.slice().reverse();
+                        const avgs = seq.map(h => { let s2 = 0, n2 = 0; AREAS.forEach(a => { s2 += Number((h.areas || {})[a.id] !== undefined ? h.areas[a.id] : 5); n2++; }); return s2 / n2; });
+                        const W = 320, H = 56, pad = 10;
+                        const stepX = (W - pad * 2) / (seq.length - 1);
+                        const yOf = v => (H - pad) - (v / 10) * (H - pad * 2);
+                        const pts = avgs.map((v, i) => (pad + i * stepX).toFixed(1) + ',' + yOf(v).toFixed(1)).join(' ');
+                        const dots2 = seq.map((h, i) => { const vm2 = TRJ_VM[h.verdict] || ['•', '#475569']; return '<circle cx="' + (pad + i * stepX).toFixed(1) + '" cy="' + yOf(avgs[i]).toFixed(1) + '" r="4" fill="' + vm2[1] + '"><title>' + new Date(h.t).toLocaleDateString('tr-TR') + ' — Ort: ' + avgs[i].toFixed(1) + '</title></circle>'; }).join('');
+                        const dSon = avgs[avgs.length - 1] - avgs[0];
+                        spark = '<div style="background:#fff;border:1px solid #e2e8f0;border-radius:8px;padding:8px 10px;margin:6px 0;">' +
+                            '<div style="font-size:10.5px;font-weight:800;color:#475569;text-transform:uppercase;letter-spacing:.04em;margin-bottom:2px;">📈 Değerlendirme seyri (hayat haritası ortalaması, eski → yeni)</div>' +
+                            '<svg viewBox="0 0 ' + W + ' ' + H + '" style="width:100%;max-width:420px;height:auto;display:block;">' +
+                            '<line x1="' + pad + '" y1="' + yOf(10) + '" x2="' + (W - pad) + '" y2="' + yOf(10) + '" stroke="#f1f5f9"/>' +
+                            '<line x1="' + pad + '" y1="' + yOf(5) + '" x2="' + (W - pad) + '" y2="' + yOf(5) + '" stroke="#e2e8f0" stroke-dasharray="3,3"/>' +
+                            '<line x1="' + pad + '" y1="' + yOf(0) + '" x2="' + (W - pad) + '" y2="' + yOf(0) + '" stroke="#e2e8f0"/>' +
+                            '<polyline points="' + pts + '" fill="none" stroke="#0f766e" stroke-width="2"/>' + dots2 + '</svg>' +
+                            '<div style="font-size:10.5px;color:#64748b;">İlk: <b>' + avgs[0].toFixed(1) + '</b> · Son: <b>' + avgs[avgs.length - 1].toFixed(1) + '</b> (' + (dSon > 0 ? '+' : '') + dSon.toFixed(1) + ')</div></div>';
+                    }
                     host.innerHTML = '<div style="border-top:1px dashed #cbd5e1;padding-top:8px;">' +
                         '<div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:6px;margin-bottom:4px;">' +
                         '<b style="font-size:12px;color:#0f766e;">🗂️ Değerlendirme geçmişi — ' + escH(currentClient()) + ' (' + arr.length + ')</b>' +
                         '<button type="button" onclick="triyajGecmisTemizle()" class="sim-btn secondary" style="font-size:10.5px;padding:2px 8px;">Geçmişi Temizle</button></div>' +
+                        spark +
                         arr.map((h, i) => {
                             const vm = TRJ_VM[h.verdict] || ['•', '#475569'];
                             const dt = new Date(h.t);
